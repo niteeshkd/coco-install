@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: file-copy-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: file-copy
+  template:
+    metadata:
+      labels:
+        app: file-copy
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/kata-oc: ""
+      containers:
+      - name: file-copy-container
+        image: quay.io/bpradipt/kata-shim
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            if [ ! -f /opt/kata/kata-shim-coco.bin ]; then
+              mkdir -p /opt/kata
+              cp /kata-shim-coco.bin /opt/kata/containerd-shim-kata-v2-coco
+              chmod 0755 /opt/kata/containerd-shim-kata-v2-coco
+            fi
+            sleep infinity
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /opt/kata/containerd-shim-kata-v2-coco"]
+        volumeMounts:
+        - name: host-volume
+          mountPath: /opt
+        securityContext:
+          privileged: true
+      volumes:
+      - name: host-volume
+        hostPath:
+          path: /opt
+
