@@ -20,9 +20,9 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - |
-            if [ ! -f /opt/kata/kata-shim-coco.bin ]; then
+            if [ ! -f /opt/kata/containerd-shim-kata-v2-coco ]; then
               mkdir -p /opt/kata
-              cp /kata-shim-coco.bin /opt/kata/containerd-shim-kata-v2-coco
+              cp /containerd-shim-kata-v2-coco /opt/kata/containerd-shim-kata-v2-coco
               chmod 0755 /opt/kata/containerd-shim-kata-v2-coco
             fi
             sleep infinity
