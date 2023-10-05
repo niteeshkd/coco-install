@@ -1,0 +1,10 @@
+---
+apiVersion: node.k8s.io/v1
+handler: kata-remote-coco
+kind: RuntimeClass
+metadata:
+  name: kata-remote-coco
+overhead:
+  podFixed:
+    memory: "120Mi"
+    cpu: "250m"
