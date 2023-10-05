@@ -13,8 +13,17 @@ kubectl apply -f mc.yaml
 
 Wait for nodes to be in READY state
 
-Copy kata shim to the worker node
+```
+kubectl get mcp kata-oc --watch
+```
+
+Apply the daemonset manifest to copy kata shim to the worker node
 
 ```
 kubectl apply -f ds.yaml
+```
+
+Create the runtimeclass
+```
+kubectl apply -f runtimeclass-coco.yaml
 ```
