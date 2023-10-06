@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: file-copy-daemonset
-  namespace: openshift-sandboxed-containers-operator
+  namespace: confidential-containers-system
 spec:
   selector:
     matchLabels:
@@ -12,8 +12,9 @@ spec:
       labels:
         app: file-copy
     spec:
+      serviceAccountName: cloud-api-adaptor
       nodeSelector:
-        node-role.kubernetes.io/kata-oc: ""
+         coco: "true"
       containers:
       - name: file-copy-container
         image: quay.io/bpradipt/kata-shim
