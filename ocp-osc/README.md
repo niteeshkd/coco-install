@@ -6,7 +6,7 @@ to support confidential containers in Azure.
 
 ## Prerequisites
 
-1. OpenShift cluster in Azure, installed with the OSC operator
+1. OpenShift cluster in Azure, installed with the OSC operator (>=1.4.1)
 2. KataConfig created with `enablePeerPods: true`
 
 ## Setup
@@ -40,7 +40,7 @@ Patch the `peer-pods-cm` configmap with the following values:
 ```
  DISABLECVM: "false"
  AZURE_INSTANCE_SIZE: "Standard_DC2as_v5"
- PODVM_IMAGE_ID: "/CommunityGalleries/cococommunity-42d8482d-92cd-415b-b332-7648bd978eff/Images/peerpod-podvm-experimental/Versions/20231010.0.1"
+ AZURE_IMAGE_ID: "/CommunityGalleries/cocopodvm-d0e4f35f-5530-4b9c-8596-112487cdea85/Images/podvm_image0/Versions/2023.10.12"
  DISABLE_CLOUD_CONFIG: "true"
 ```
 
