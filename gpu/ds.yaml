@@ -21,16 +21,16 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - |
-            if [ ! -f /opt/kata/containerd-shim-kata-v2-coco ]; then
+            if [ ! -f /opt/kata/containerd-shim-kata-v2-gpu ]; then
               mkdir -p /opt/kata
-              cp /containerd-shim-kata-v2-coco /opt/kata/containerd-shim-kata-v2-coco
-              chmod 0755 /opt/kata/containerd-shim-kata-v2-coco
+              cp /containerd-shim-kata-v2-gpu /opt/kata/containerd-shim-kata-v2-gpu
+              chmod 0755 /opt/kata/containerd-shim-kata-v2-gpu
             fi
             sleep infinity
         lifecycle:
           preStop:
             exec:
-              command: ["/bin/sh", "-c", "rm -f /opt/kata/containerd-shim-kata-v2-coco"]
+              command: ["/bin/sh", "-c", "rm -f /opt/kata/containerd-shim-kata-v2-gpu"]
         volumeMounts:
         - name: host-volume
           mountPath: /opt
