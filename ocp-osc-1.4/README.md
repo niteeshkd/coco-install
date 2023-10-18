@@ -6,7 +6,7 @@ to support confidential containers in Azure.
 
 ## Prerequisites
 
-1. OpenShift cluster in Azure, installed with the OSC operator (>=1.4.1)
+1. OpenShift cluster in Azure, installed with the OSC operator (1.4.1 <= osc < 1.5.x )
 2. KataConfig created with `enablePeerPods: true`
 
 ## Setup
