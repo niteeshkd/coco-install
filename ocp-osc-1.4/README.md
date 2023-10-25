@@ -51,4 +51,5 @@ kubectl set image ds/peerpodconfig-ctrl-caa-daemon -n openshift-sandboxed-contai
 
 ## Deploy KBS
 
-TBD
+Refer to the following [doc](../misc/kbs/README.md)
+
