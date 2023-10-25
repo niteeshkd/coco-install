@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: azure-confidential-image-deletion
+  name: azure-confidential-image-deletion-ubuntu
   namespace: openshift-sandboxed-containers-operator
 spec:
   parallelism: 1
