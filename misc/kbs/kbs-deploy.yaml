@@ -71,6 +71,3 @@ spec:
    kind: Service
    name: kbs
    weight: 100
- tls:
-    termination: edge
-
