@@ -27,7 +27,7 @@ kubectl create secret generic kbs-auth-public-key --from-file=kbs.pem -n coco-kb
 ```
 
 # Create an application secret
-openssl rand 128 > key.bin
+head -c 32 /dev/urandom | openssl enc > key.bin
 
 # Create a secret object from the user key file (key.bin).
 kubectl create secret generic kbs-keys --from-file=key.bin
