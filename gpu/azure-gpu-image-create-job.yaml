@@ -99,7 +99,7 @@ spec:
           [[ ! "${AZURE_CLIENT_SECRET}" ]] && echo "AZURE_CLIENT_SECRET is missing" && exit 1
           [[ ! "${AZURE_CLIENT_ID}" ]] && echo "AZURE_CLIENT_ID is missing" && exit 1
 
-          [[ "${NVIDIA_DRIVER_VERSION}" != "535" ]] && sed -i 's/535/latest/g' cloud-api-adaptor/podvm/addons/nvidia_gpu/setup.sh
+          [[ "${NVIDIA_DRIVER_VERSION}" != "535" ]] && sed -i "s/535/${NVIDIA_DRIVER_VERSION}/g" cloud-api-adaptor/podvm/addons/nvidia_gpu/setup.sh
           [[ "${VM_GENERATION}" == "V1" ]] && export SKU="9_3"
 
           # Set the image version
