@@ -565,6 +565,7 @@ experimental=[]
 # (default: false)
 service_offload = true
 
+image_request_timeout = 900
 # Container image decryption keys provisioning.
 # Applies only if service_offload is true.
 # Keys can be provisioned locally (e.g. through a special command or
