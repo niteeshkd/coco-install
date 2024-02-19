@@ -242,9 +242,9 @@ function create_image_using_packer() {
         export BASE_IMAGE_PUBLISHER="redhat"
         export BASE_IMAGE_OFFER="rhel-raw"
 
-        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes, then set BASE_IMAGE_SKU to 9_3_cvm_sev_snp
+        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes and IMAGE_SKU is not set, then set IMAGE_SKU to 9_3_cvm_sev_snp
         # and IMAGE_DEFINITION_VM_GENERATION to V2
-        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" ]] && export BASE_IMAGE_SKU="9_3_cvm_sev_snp"
+        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" ]] && ! "${BASE_IMAGE_SKU}" ]] && export BASE_IMAGE_SKU="9_3_cvm_sev_snp"
 
         # If VM_GENERATION is V2 and IMAGE_SKU is not set and CONFIDENTIAL_COMPUTE_ENABLED is not set, then set IMAGE_SKU to 93_gen2
         [[ "${IMAGE_DEFINITION_VM_GENERATION}" == "V2" && ! "${BASE_IMAGE_SKU}" && "${CONFIDENTIAL_COMPUTE_ENABLED}" != "yes" ]] &&
