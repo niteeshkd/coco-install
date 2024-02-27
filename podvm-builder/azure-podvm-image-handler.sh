@@ -242,16 +242,23 @@ function create_image_using_packer() {
         export BASE_IMAGE_PUBLISHER="redhat"
         export BASE_IMAGE_OFFER="rhel-raw"
 
-        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes and IMAGE_SKU is not set, then set IMAGE_SKU to 9_3_cvm_sev_snp
-        # and IMAGE_DEFINITION_VM_GENERATION to V2
-        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" ]] && ! "${BASE_IMAGE_SKU}" ]] && export BASE_IMAGE_SKU="9_3_cvm_sev_snp"
+        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes, then force IMAGE_DEFINITION_VM_GENERATION to V2
+        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" ]] &&
+            export IMAGE_DEFINITION_VM_GENERATION="V2"
 
-        # If VM_GENERATION is V2 and IMAGE_SKU is not set and CONFIDENTIAL_COMPUTE_ENABLED is not set, then set IMAGE_SKU to 93_gen2
-        [[ "${IMAGE_DEFINITION_VM_GENERATION}" == "V2" && ! "${BASE_IMAGE_SKU}" && "${CONFIDENTIAL_COMPUTE_ENABLED}" != "yes" ]] &&
-            export BASE_IMAGE_SKU="93_gen2"
+        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes, CONFIDENTIAL_COMPUTE_TYPE is snp and BASE_IMAGE_SKU is not set,
+        # then set BASE_IMAGE_SKU to 9_3_cvm_sev_snp
+        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" && "${CONFIDENTIAL_COMPUTE_TYPE}" == "snp" && -z "${BASE_IMAGE_SKU}" ]] &&
+            export BASE_IMAGE_OFFER="rhel-cvm" && export BASE_IMAGE_SKU="9_3_cvm_sev_snp"
 
-        # If VM_GENERATION is V1 and IMAGE_SKU is not set, then set IMAGE_SKU to 9_3
-        [[ "${IMAGE_DEFINITION_VM_GENERATION}" == "V1" && ! "${BASE_IMAGE_SKU}" ]] && export BASE_IMAGE_SKU="9_3"
+        # If CONFIDENTIAL_COMPUTE_ENABLED is set to yes, CONFIDENTIAL_COMPUTE_TYPE is tdx and BASE_IMAGE_SKU is not set,
+        # then set BASE_IMAGE_SKU to rhel93_tdxpreview
+        [[ "${CONFIDENTIAL_COMPUTE_ENABLED}" == "yes" && "${CONFIDENTIAL_COMPUTE_TYPE}" == "tdx" && -z "${BASE_IMAGE_SKU}" ]] &&
+            export BASE_IMAGE_OFFER="rhel_test_offers" && export BASE_IMAGE_SKU="rhel93_tdxpreview"
+
+        # If VM_GENERATION is V1 and BASE_IMAGE_SKU is not set, then set BASE_IMAGE_SKU to 9_3
+        [[ "${IMAGE_DEFINITION_VM_GENERATION}" == "V1" && -z "${BASE_IMAGE_SKU}" ]] &&
+            export BASE_IMAGE_SKU="9_3"
     else
         # TBD Add support for other distros
         # Error out if the distro is not supported
@@ -263,7 +270,7 @@ function create_image_using_packer() {
     export PKR_VAR_subscription_id="${AZURE_SUBSCRIPTION_ID}"
     export PKR_VAR_tenant_id="${AZURE_TENANT_ID}"
     export PKR_VAR_resource_group="${AZURE_RESOURCE_GROUP}"
-    export PKR_VAR_location="${AZURE_LOCATION}"
+    export PKR_VAR_location="${AZURE_REGION}"
     export PKR_VAR_az_image_name="${IMAGE_NAME}"
     export PKR_VAR_vm_size="${VM_SIZE}"
     export PKR_VAR_ssh_username="${SSH_USERNAME:-peerpod}"
@@ -366,6 +373,46 @@ function create_or_update_image_configmap() {
     echo "podvm-images configmap created or updated successfully"
 }
 
+# Funtion to recreate podvm-images configmap with all the images
+
+function recreate_image_configmap() {
+    echo "Recreating podvm-images configmap"
+
+    # Get list of all image ids
+    get_all_image_ids
+
+    # Check if IMAGE_ID_LIST is empty
+    [[ -z "${IMAGE_ID_LIST}" ]] && error_exit "Nothing to recreate in podvm-images configmap"
+
+    kubectl create configmap podvm-images \
+        -n openshift-sandboxed-containers-operator \
+        --from-literal=azure="${IMAGE_ID_LIST}" \
+        --dry-run=client -o yaml |
+        kubectl apply -f - ||
+        error_exit "Failed to recreate podvm-images configmap"
+
+    echo "podvm-images configmap recreated successfully"
+}
+
+# Function to add the image id as annotation in the peer-pods-cm configmap
+
+function add_image_id_annotation_to_peer_pods_cm() {
+    echo "Adding image id to peer-pods-cm configmap"
+
+    # Check if the peer-pods-cm configmap exists
+    if ! kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator >/dev/null 2>&1; then
+        echo "peer-pods-cm configmap does not exist. Skipping adding the image id"
+        return
+    fi
+
+    # Add the image id as annotation to peer-pods-cm configmap
+    kubectl annotate configmap peer-pods-cm -n openshift-sandboxed-containers-operator \
+        "LATEST_IMAGE_ID=${IMAGE_ID}" ||
+        error_exit "Failed to add the image id as annotation to peer-pods-cm configmap"
+
+    echo "Image id added as annotation to peer-pods-cm configmap successfully"
+}
+
 # Function to create the image in Azure
 # It's assumed you have already logged in to Azure
 # It's assumed that the gallery and image defintion exists
@@ -397,11 +444,12 @@ function create_image() {
     # Create Azure image using packer
     create_image_using_packer
 
-    # Get the image id of the newly created image
+    # Get the image id of the newly created image.
+    # This will set the IMAGE_ID variable
     get_image_id
 
-    # Create or update podvm-images configmap with all the images (IMAGE_ID_LIST)
-    create_or_update_image_configmap
+    # Add the image id as annotation to peer-pods-cm configmap
+    add_image_id_annotation_to_peer_pods_cm
 
     echo "Azure image created successfully"
 
@@ -577,6 +625,7 @@ function display_help() {
     echo "-D Delete image definition [force]"
     echo "-i Create image version"
     echo "-I Delete image version"
+    echo "-R Recreate podvm-images configMap"
     echo "-h Display help"
 }
 
@@ -606,7 +655,7 @@ if [ "$1" = "--" ]; then
         ;;
     esac
 else
-    while getopts ":cCgGdDiIh" opt; do
+    while getopts ":cCgGdDiIRh" opt; do
         verify_vars
         login_to_azure
         case ${opt} in
@@ -647,6 +696,10 @@ else
         I)
             # Delete image version
             delete_image_version
+            ;;
+        R)
+            # Recreate the podvm-images configmap
+            recreate_image_configmap
             ;;
         h)
             display_help

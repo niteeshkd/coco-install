@@ -20,6 +20,9 @@ data:
   IMAGE_DEFINITION_VM_GENERATION: "V2"
   IMAGE_DEFINITION_ARCHITECTURE: "x64"
 
+  # Base image
+  BASE_IMAGE_SKU: "93_gen2" # this is default for V2 image generation
+
   # Image
   IMAGE_BASE_NAME: "podvm-image"
   IMAGE_VERSION_MAJ_MIN: "0.0"
@@ -37,6 +40,8 @@ data:
   INSTALL_PACKAGES: "no"
   DOWNLOAD_SOURCES: "no"
   CONFIDENTIAL_COMPUTE_ENABLED: "no"
+  # snp/tdx
+  CONFIDENTIAL_COMPUTE_TYPE: "snp"
   DISABLE_CLOUD_CONFIG: "true"
   ENABLE_NVIDIA_GPU: "yes"
   UPDATE_PEERPODS_CM: "yes"

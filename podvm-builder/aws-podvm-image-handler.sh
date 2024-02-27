@@ -171,8 +171,8 @@ function get_ami_id() {
 
 # Function to get all the ami ids for the given base name
 
-function get_ami_id_list() {
-    echo "Getting all image ids"
+function get_all_ami_ids() {
+    echo "Getting all ami ids"
 
     # Get all the ami ids for the given base name
     # If any error occurs, exit the script with an error message
@@ -227,6 +227,46 @@ function create_or_update_image_configmap() {
 
 }
 
+# Funtion to recreate podvm-images configmap with all the amis
+
+function recreate_image_configmap() {
+    echo "Recreating podvm-images configmap"
+
+    # Get list of all ami ids
+    get_all_ami_ids
+
+    # Check if IMAGE_ID_LIST is empty
+    [[ -z "${AMI_ID_LIST}" ]] && error_exit "Nothing to recreate in podvm-images configmap"
+
+    kubectl create configmap podvm-images \
+        -n openshift-sandboxed-containers-operator \
+        --from-literal=aws="${AMI_ID_LIST}" \
+        --dry-run=client -o yaml |
+        kubectl apply -f - ||
+        error_exit "Failed to recreate podvm-images configmap"
+
+    echo "podvm-images configmap recreated successfully"
+}
+
+# Function to add the ami id as annotation in the peer-pods-cm configmap
+
+function add_ami_id_annotation_to_peer_pods_cm() {
+    echo "Adding ami id to peer-pods-cm configmap"
+
+    # Check if the peer-pods-cm configmap exists
+    if ! kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator >/dev/null 2>&1; then
+        echo "peer-pods-cm configmap does not exist. Skipping adding the ami id"
+        return
+    fi
+
+    # Add the image id as annotation to peer-pods-cm configmap
+    kubectl annotate configmap peer-pods-cm -n openshift-sandboxed-containers-operator \
+        "LATEST_AMI_ID=${AMI_ID}" ||
+        error_exit "Failed to add the ami id as annotation to peer-pods-cm configmap"
+
+    echo "AMI id added as annotation to peer-pods-cm configmap successfully"
+}
+
 # Function to create the ami in AWS
 
 function create_ami() {
@@ -260,10 +300,11 @@ function create_ami() {
     create_ami_using_packer
 
     # Get the ami id of the newly created image
+    # This will set the AMI_ID environment variable
     get_ami_id
 
-    # Create or update podvm-images configmap with all the amis (AMI_ID_LIST)
-    create_or_update_image_configmap
+    # Add the ami id as annotation to peer-pods-cm configmap
+    add_ami_id_annotation_to_peer_pods_cm
 
 }
 
@@ -290,8 +331,10 @@ function delete_ami_using_id() {
 function display_help() {
     echo "This script is used to create AWS ami for podvm"
     echo "Usage: $0 [-c|-C] [-- install_binaries|install_rpms|install_cli]"
-    echo "  -c  Create image"
-    echo "  -C  Delete image"
+    echo "Options:"
+    echo "-c  Create image"
+    echo "-C  Delete image"
+    echo "-R Recreate podvm-images configMap"
 }
 
 # main function
@@ -321,7 +364,7 @@ if [ "$1" = "--" ]; then
         ;;
     esac
 else
-    while getopts "cCh" opt; do
+    while getopts "cCRh" opt; do
         verify_vars
         case ${opt} in
         c)
@@ -332,6 +375,10 @@ else
             # Delete the ami
             delete_ami_using_id
 
+            ;;
+        R)
+            # Recreate the podvm-images configmap
+            recreate_image_configmap
             ;;
         h)
             # Display help
