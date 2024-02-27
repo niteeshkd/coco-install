@@ -10,15 +10,6 @@ function check_peer_pods_cm_exists() {
   fi
 }
 
-# Function to check if podvm-images configmap exists
-function check_podvm_images_exists() {
-  if kubectl get configmap podvm-images -n openshift-sandboxed-containers-operator >/dev/null 2>&1; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 # function to create podvm image
 
 function create_podvm_image() {
@@ -32,12 +23,19 @@ function create_podvm_image() {
         echo "peer-pods-cm configmap does not exist. Skipping the update of peer-pods-cm"
         exit 0
       fi
-      # Get the IMAGE_ID value from the podvm-images configmap
-      # key: azure and the first value in the list
-      IMAGE_ID=$(kubectl get configmap podvm-images -n openshift-sandboxed-containers-operator -o jsonpath='{.data.azure}' | awk '{print $1}')
+      # Get the IMAGE_ID from the LATEST_IMAGE_ID annotation key in peer-pods-cm configmap
+      IMAGE_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.metadata.annotations.LATEST_IMAGE_ID}')
+
+      # if IMAGE_ID is not set, then exit
+      if [ -z "${IMAGE_ID}" ]; then
+        echo "IMAGE_ID is not set in peer-pods-cm. Skipping the update of peer-pods-cm"
+        exit 1
+      fi
+
       # Update peer-pods-cm configmap with the IMAGE_ID value
       echo "Updating peer-pods-cm configmap with IMAGE_ID=${IMAGE_ID}"
       kubectl patch configmap peer-pods-cm -n openshift-sandboxed-containers-operator --type merge -p "{\"data\":{\"AZURE_IMAGE_ID\":\"${IMAGE_ID}\"}}"
+
     fi
     ;;
   aws)
@@ -49,9 +47,15 @@ function create_podvm_image() {
         echo "peer-pods-cm configmap does not exist. Skipping the update of peer-pods-cm"
         exit 0
       fi
-      # Get the AMI_ID value from the podvm-images configmap
-      # key: aws and the first value in the list
-      AMI_ID=$(kubectl get configmap podvm-images -n openshift-sandboxed-containers-operator -o jsonpath='{.data.aws}' | awk '{print $1}')
+      # Get the AMI_ID from the LATEST_AMI_ID annotation key in peer-pods-cm configmap
+      AMI_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.metadata.annotations.LATEST_AMI_ID}')
+
+      # if AMI_ID is not set, then exit
+      if [ -z "${AMI_ID}" ]; then
+        echo "AMI_ID is not set in peer-pods-cm. Skipping the update of peer-pods-cm"
+        exit 1
+      fi
+
       # Update peer-pods-cm configmap with the AMI_ID value
       echo "Updating peer-pods-cm configmap with AMI_ID=${AMI_ID}"
       kubectl patch configmap peer-pods-cm -n openshift-sandboxed-containers-operator --type merge -p "{\"data\":{\"PODVM_AMI_ID\":\"${AMI_ID}\"}}"
@@ -70,22 +74,31 @@ function create_podvm_image() {
 
 function delete_podvm_image() {
 
-  # Check for the existence of peer-pods-cm and podvm-images configmap. If not present, then exit
+  # Check for the existence of peer-pods-cm configmap. If not present, then exit
   if ! check_peer_pods_cm_exists; then
     echo "peer-pods-cm configmap does not exist. Skipping image deletion"
     exit 0
   fi
 
-  if ! check_podvm_images_exists; then
-    echo "podvm-images configmap does not exist. Skipping image deletion"
-    exit 0
-  fi
-
   case "${CLOUD_PROVIDER}" in
   azure)
+
+    # If IMAGE_ID is not set, then exit
+    if [ -z "${IMAGE_ID}" ]; then
+      echo "IMAGE_ID is not set. Skipping the deletion of Azure image"
+      exit 1
+    fi
+
+    AZURE_IMAGE_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.AZURE_IMAGE_ID}')
+
+    # If AZURE_IMAGE_ID is not set, then exit
+    if [ -z "${AZURE_IMAGE_ID}" ]; then
+      echo "AZURE_IMAGE_ID is not set in peer-pods-cm. Skipping the deletion of Azure image"
+      exit 1
+    fi
+
     # check if the AZURE_IMAGE_ID value in peer-pods-cm is same as the input IMAGE_ID
     # If yes, then don't delete the image unless force option is provided
-    AZURE_IMAGE_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.AZURE_IMAGE_ID}')
     if [ "${AZURE_IMAGE_ID}" == "${IMAGE_ID}" ]; then
       if [ "$1" != "-f" ]; then
         echo "AZURE_IMAGE_ID in peer-pods-cm is same as the input image to be deleted. Skipping the deletion of Azure image"
@@ -95,15 +108,6 @@ function delete_podvm_image() {
 
     echo "Deleting Azure image"
     /scripts/azure-podvm-image-handler.sh -C
-    # Update the podvm-images configmap to remove the azure image id from the list
-    # Get the IMAGE_ID_LIST from the podvm-images configmap
-    IMAGE_ID_LIST=$(kubectl get configmap podvm-images -n openshift-sandboxed-containers-operator -o jsonpath='{.data.azure}')
-
-    # Remove the IMAGE_ID from the list
-    IMAGE_ID_LIST="${IMAGE_ID_LIST//${IMAGE_ID}/}"
-
-    # Update the podvm-images configmap with the new list
-    kubectl patch configmap podvm-images -n openshift-sandboxed-containers-operator --type merge -p "{\"data\":{\"azure\":\"${IMAGE_ID_LIST}\"}}"
 
     # Update the peer-pods-cm configmap and remove the AZURE_IMAGE_ID value
     if [ "${UPDATE_PEERPODS_CM}" == "yes" ]; then
@@ -112,9 +116,22 @@ function delete_podvm_image() {
 
     ;;
   aws)
+    # If AMI_ID is not set, then exit
+    if [ -z "${AMI_ID}" ]; then
+      echo "AMI_ID is not set. Skipping the deletion of AWS AMI"
+      exit 1
+    fi
+
+    PODVM_AMI_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.PODVM_AMI_ID}')
+
+    # If PODVM_AMI_ID is not set, then exit
+    if [ -z "${PODVM_AMI_ID}" ]; then
+      echo "PODVM_AMI_ID is not set in peer-pods-cm. Skipping the deletion of AWS AMI"
+      exit 1
+    fi
+
     # check if the PODVM_AMI_ID value in peer-pods-cm is same as the input AMI_ID
     # If yes, then don't delete the image unless force option is provided
-    PODVM_AMI_ID=$(kubectl get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.PODVM_AMI_ID}')
     if [ "${PODVM_AMI_ID}" == "${AMI_ID}" ]; then
       if [ "$1" != "-f" ]; then
         echo "PODVM_AMI_ID in peer-pods-cm is same as the input image to be deleted. Skipping the deletion of AWS AMI"
@@ -124,15 +141,6 @@ function delete_podvm_image() {
 
     echo "Deleting AWS AMI"
     /scripts/aws-podvm-image-handler.sh -C
-    # Update the podvm-images configmap to remove the AWS AMI id from the list
-    # Get the AMI_ID_LIST from the podvm-images configmap
-    AMI_ID_LIST=$(kubectl get configmap podvm-images -n openshift-sandboxed-containers-operator -o jsonpath='{.data.aws}')
-
-    # Remove the AMI_ID from the list
-    AMI_ID_LIST="${AMI_ID_LIST//${AMI_ID}/}"
-
-    # Update the podvm-images configmap with the new list
-    kubectl patch configmap podvm-images -n openshift-sandboxed-containers-operator --type merge -p "{\"data\":{\"aws\":\"${AMI_ID_LIST}\"}}"
 
     # Update the peer-pods-cm configmap and remove the PODVM_AMI_ID value
     if [ "${UPDATE_PEERPODS_CM}" == "yes" ]; then
