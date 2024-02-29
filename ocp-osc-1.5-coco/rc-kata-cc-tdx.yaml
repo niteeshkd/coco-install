@@ -1,8 +1,8 @@
 apiVersion: node.k8s.io/v1
-handler: kata-cc
+handler: kata-cc-tdx
 kind: RuntimeClass
 metadata:
-  name: kata-cc
+  name: kata-cc-tdx
 scheduling:
   nodeSelector:
     node-role.kubernetes.io/kata-oc: ""

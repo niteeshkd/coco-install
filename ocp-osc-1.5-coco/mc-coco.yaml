@@ -14,9 +14,9 @@ spec:
       files:
         - contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/2yOQU4DMQxF93OKaPYZS+x7EoSikLiNxSQOthPg9qgtFbPoytL/en7/NQnxJqMZVXxc3T6iRZ/S2+L+otCjFXdyK3A3uNbwTg0SN4vUULLXQtXfuPmy/nP20/HKzXoIhdluz2Q0mOnQJG5nujyxaYmCkPEcx24K94EPu8KdGxKNuPlPrMNb/vZKdTOu+7q4LjRpxwvm8EVWeFgorBYyTkqo7uRMBi6/AQAA//9nGKfxEQEAAA==
+            source: data:;base64,H4sIAAAAAAAC/2yOQW7EIAxF9zkFyp5Y6n5OUlWIgmewGjA1hra3r5I0ahazsvS/nt9/DUK8SC9KGc/blg+v3obwNpm/yFWvydzMDFwVthreqUDgop4KSrQtUbY7N17mf05/Km7cyJdQmHV/Jr3ACJcmcLnT44mtJS8IEe++r9rgGHjaGxxcF6/ExX5i7lbj96Kc13kyVWjQig+M7os0cVeXuKmLOChgMzej0nH6DQAA///62FPhDQEAAA==
           mode: 420
-          path: /etc/crio/crio.conf.d/50-kata-cc
+          path: /etc/crio/crio.conf.d/50-kata-cc-tdx
         - contents:
             compression: gzip
             source: data:;base64,H4sIAAAAAAAC/2yPQW4DMQhF93MKa/YepO5zkqqyXJvEqGPjAnbb21eTNGoWWSF9eDx4TUK8yWhGFe9Vt49o0afklerb4v7i0KMVd3IrcDc4RuCdGiRuFqmhZK+Fqr+y82X95+yn48HN+hAKs12XyWgw00MncTvT5YlNSxSEjOc4dlO4HXm3K9y4IdGIm//EOrzl7+OHzbju6+K60KQdL5jDF1nhYaGwWsg4KaG6kzMZuPwGAAD///nC824VAQAA

@@ -2,11 +2,11 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    app: test-cc
-  name: test-cc
+    app: test-cc-tdx
+  name: test-cc-tdx
   namespace: default
 spec:
-  runtimeClassName: kata-cc
+  runtimeClassName: kata-cc-tdx
   containers:
   - args:
     - "20000"
