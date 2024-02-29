@@ -15,7 +15,7 @@ spec:
       serviceAccountName: default
       nodeSelector:
         node-role.kubernetes.io/kata-oc: ""
-      containers:
+      initContainers:
         - name: file-copy-container
           image: ghcr.io/kata-containers/kata-deploy-ci:kata-containers-bb95b1c418d035a694d037e79906eb24f2edeecc-amd64
 
@@ -23,11 +23,34 @@ spec:
           args:
             - |
               echo "copy the kata files"
-              cp -rf /opt/kata-artifacts/opt/kata/* /host-opt/kata/
+              cp -rf /opt/kata-artifacts/opt/kata/bin /host-opt/kata/
+              cp -rf /opt/kata-artifacts/opt/kata/share /host-opt/kata/
               # Make a copy of configuration-qemu-tdx.toml for non-CC setup
               cp /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx.toml /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx-sim.toml
               sed -i '/confidential_guest = true/ s/^/# /' /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx-sim.toml
               echo "copying completed..."
+          volumeMounts:
+            - name: host-opt-volume
+              mountPath: /host-opt
+          securityContext:
+            privileged: true
+      containers:
+        - name: selinux-label
+          image: registry.access.redhat.com/ubi8/ubi
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "label the files"
+
+              chcon --reference=/host-usr/bin/containerd-shim-kata-v2 /host-opt/kata/bin/containerd-shim-kata-v2
+              chcon --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/bin/qemu-system-x86_64-tdx-experimental
+              chcon --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/bin/qemu-system-x86_64-snp-experimental
+              chcon -R --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/share/kata-qemu/
+              chcon -R --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/share/kata-qemu-tdx-experimental/
+              chcon -R --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/share/kata-qemu-snp-experimental/
+              chcon -R --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/share/tdvf
+              chcon -R --reference=/host-usr/libexec/qemu-kvm /host-opt/kata/share/ovmf
+              echo "labelling completed..."
               sleep infinity
           lifecycle:
             preStop:
@@ -36,14 +59,19 @@ spec:
                   [
                     "/bin/sh",
                     "-c",
-                    "rm -f /host-opt/kata/",
+                    "rm -rf /host-opt/kata/share /host-opt/kata/bin",
                   ]
           volumeMounts:
-            - name: host-volume
+            - name: host-opt-volume
               mountPath: /host-opt
+            - name: host-usr-volume
+              mountPath: /host-usr
           securityContext:
             privileged: true
       volumes:
-        - name: host-volume
+        - name: host-opt-volume
           hostPath:
             path: /opt
+        - name: host-usr-volume
+          hostPath:
+            path: /usr
