@@ -19,6 +19,11 @@ spec:
           path: /etc/crio/crio.conf.d/50-kata-cc-tdx
         - contents:
             compression: gzip
+            source: data:;base64,H4sIAAAAAAAC/2yOQWoDMQxF93MKM3uPoPucpJTBtZVYdCy5kuzS25ckDc2iK8H/PL3/mpVk08FODR/Xto/kKeb8toTfaO/JaziFFaQ7XGt4J4Ys7IkYtUSr1OKNmy/rH+ffHa/cbE+hivjtmQ6GmZ+aLHymyz82q0kRCp7TONzgPvBhN7hzQ5OTcPzENqJx31zasS6hK0068IJl/yKvMnyvYr4XnJTRwim4Dlx+AgAA//93zP6ZDQEAAA==
+          mode: 420
+          path: /etc/crio/crio.conf.d/50-kata-cc-snp
+        - contents:
+            compression: gzip
             source: data:;base64,H4sIAAAAAAAC/2yPQW4DMQhF93MKa/YepO5zkqqyXJvEqGPjAnbb21eTNGoWWSF9eDx4TUK8yWhGFe9Vt49o0afklerb4v7i0KMVd3IrcDc4RuCdGiRuFqmhZK+Fqr+y82X95+yn48HN+hAKs12XyWgw00MncTvT5YlNSxSEjOc4dlO4HXm3K9y4IdGIm//EOrzl7+OHzbju6+K60KQdL5jDF1nhYaGwWsg4KaG6kzMZuPwGAAD///nC824VAQAA
           mode: 420
           path: /etc/crio/crio.conf.d/50-kata-cc-sim

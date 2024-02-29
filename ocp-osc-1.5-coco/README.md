@@ -23,7 +23,7 @@ Create the new MachineConfig to update the Kata configurations
 ```
 kubectl apply -f mc-coco.yaml
 ```
-The MachineConfig will update the CRIO config for the `kata-cc` and `kata-cc-sim` runtimeClass
+The MachineConfig will update the CRIO config for the `kata-cc-tdx`, `kata-cc-snp` and `kata-cc-sim` runtimeClass
 
 Wait for nodes to be in READY state
 
@@ -33,19 +33,37 @@ kubectl get mcp kata-oc --watch
 
 ## Create RuntimeClass
 
+
+Use the manifest depending on your setup.
+For TDX:
 ```
-kubectl apply -f rc-kata-cc.yaml
+kubectl apply -f rc-kata-cc-tdx.yaml
+```
+
+For SNP:
+```
+kubectl apply -f rc-kata-cc-snp.yaml
+
+```
+For non-CC hardware:
+```
 kubectl apply -f rc-kata-cc-sim.yaml
 ```
+
 The `kata-cc-sim` runtimeClass is to try out the CoCo stack on a non-CC hardware.
 
 # Deploy a test workload
 
-```
-kubectl apply -f test-cc.yaml
-```
+Use the example manifest depending on your setup.
+Example on non-CC hardware use this:
 
-If not using a CC hardware then, run this
 ```
 kubectl apply -f test-cc-sim.yaml
+```
+
+If not using a CC hardware then, use the correct manifest
+based on the CC hardware - snp or tdx.
+Example:
+```
+kubectl apply -f test-cc-tdx.yaml
 ```
