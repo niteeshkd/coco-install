@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: shim-copy-daemonset
+  namespace: openshift-sandboxed-containers-operator
+spec:
+  selector:
+    matchLabels:
+      app: shim-copy
+  template:
+    metadata:
+      labels:
+        app: shim-copy
+    spec:
+      serviceAccountName: default
+      nodeSelector:
+        node-role.kubernetes.io/kata-oc: ""
+      containers:
+        - name: file-copy-container
+          image: ghcr.io/kata-containers/kata-deploy-ci:kata-containers-bb95b1c418d035a694d037e79906eb24f2edeecc-amd64
+
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "copy the kata files"
+              cp -rf /opt/kata-artifacts/opt/kata/* /host-opt/kata/
+              # Make a copy of configuration-qemu-tdx.toml for non-CC setup
+              cp /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx.toml /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx-sim.toml
+              sed -i '/confidential_guest = true/ s/^/# /' /host-opt/kata/share/defaults/kata-containers/configuration-qemu-tdx-sim.toml
+              echo "copying completed..."
+              sleep infinity
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  [
+                    "/bin/sh",
+                    "-c",
+                    "rm -f /host-opt/kata/",
+                  ]
+          volumeMounts:
+            - name: host-volume
+              mountPath: /host-opt
+          securityContext:
+            privileged: true
+      volumes:
+        - name: host-volume
+          hostPath:
+            path: /opt
