@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kbs-client
+  namespace: kbs-operator-system
+spec:
+  runtimeClassName: kata-cc-sim
+  containers:
+  - name: kbs-client
+    image: quay.io/bpradipt/kbs-client:latest
+    imagePullPolicy: IfNotPresent
+    command:
+      - sleep
+      - "360000"
