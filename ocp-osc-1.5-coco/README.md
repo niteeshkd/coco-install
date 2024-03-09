@@ -20,14 +20,15 @@ and copy the custom shim to `/opt/kata` on all the worker nodes having the label
 
 Create the new MachineConfig to update the Kata configurations
 
-```
+```sh
 kubectl apply -f mc-coco.yaml
 ```
-The MachineConfig will update the CRIO config for the `kata-cc-tdx`, `kata-cc-snp` and `kata-cc-sim` runtimeClass
+The MachineConfig will update the CRIO config for the `kata-cc-tdx`, `kata-cc-snp`, `kata-cc-sev`
+and `kata-cc-sim` runtimeClasses.
 
 Wait for nodes to be in READY state
 
-```
+```sh
 kubectl get mcp kata-oc --watch
 ```
 
@@ -36,34 +37,40 @@ kubectl get mcp kata-oc --watch
 
 Use the manifest depending on your setup.
 For TDX:
-```
+```sh
 kubectl apply -f rc-kata-cc-tdx.yaml
 ```
 
 For SNP:
-```
+```sh
 kubectl apply -f rc-kata-cc-snp.yaml
+```
 
+For SEV:
+```sh
+kubectl apply -f rc-kata-cc-sev.yaml
 ```
+
 For non-CC hardware:
-```
+```sh
 kubectl apply -f rc-kata-cc-sim.yaml
 ```
 
 The `kata-cc-sim` runtimeClass is to try out the CoCo stack on a non-CC hardware.
+
 
 # Deploy a test workload
 
 Use the example manifest depending on your setup.
 Example on non-CC hardware use this:
 
-```
+```sh
 kubectl apply -f test-cc-sim.yaml
 ```
 
 If not using a CC hardware then, use the correct manifest
-based on the CC hardware - snp or tdx.
+based on the CC hardware - sev, snp or tdx.
 Example:
-```
+```sh
 kubectl apply -f test-cc-tdx.yaml
 ```
