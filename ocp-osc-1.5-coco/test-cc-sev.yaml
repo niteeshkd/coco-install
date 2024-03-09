@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: test-cc-sev
+  name: test-cc-sev
+  namespace: default
+spec:
+  runtimeClassName: kata-cc-sev
+  containers:
+  - args:
+    - "20000"
+    command:
+    - sleep
+    image: busybox:1.28
+    imagePullPolicy: IfNotPresent
+    name: test
