@@ -1,66 +1,46 @@
-## Apply the configmaps
-```
+# Introduction
+
+This is a brief readme explaining the usage of the podvm-builder scripts and related files
+
+## Create PodVM image generation configuration
+
+The configuration used for the podvm image generation is available in the following configmaps:
+
+- Azure: `azure-podvm-image-cm`
+- AWS: `aws-podvm-image-cm`
+
+Depending on the cloud provider (eg. aws or azure) create the respective
+configmaps. Please review and modify the settings in the configMap as required.
+
+For AWS
+
+```sh
 kubectl apply -f aws-podvm-image-cm.yaml
+```
+
+For Azure
+
+```sh
 kubectl apply -f azure-podvm-image-cm.yaml
 ```
 
 ## Create podvm image
-```
+
+The podvm image is created in a Kubernetes job. To create the job run the following command
+
+```sh
 kubectl apply -f osc-podvm-create-job.yaml
 ```
-On successful image creation, the image details will be updated in the `podvm-images`
-configmap under `openshift-sandboxed-containers-operator` namespace.
-The `podvm-images` configmap uses the cloud provider name (eg, aws, azure) to store the 
-list of the images created.
 
-The first entry in the list is the latest one.
+On successful image creation, the podvm image details will be updated as an annotation in the `peer-pods-cm`
+under `openshift-sandboxed-containers-operator` namespace.
 
-For example, the following shows a sample o/p on Azure (few entries removed for brevity)
-
-```
-oc get cm -n openshift-sandboxed-containers-operator podvm-images -o yaml 
-
-apiVersion: v1
-data:
-  azure: '/subscriptions/aaaaaaaa/resourceGroups/aro-lelfqxrs/providers/Microsoft.Compute/galleries/PodVMGallery/images/podvm-image/versions/0.0.2024020727
-    /subscriptions/aaaaaaaa/resourceGroups/aro-lelfqxrs/providers/Microsoft.Compute/galleries/PodVMGallery/images/podvm-image/versions/0.0.2024020712 '
-kind: ConfigMap
-metadata:
-  name: podvm-images
-  namespace: openshift-sandboxed-containers-operator
-```
-
-On AWS setup
-```
-oc get cm -n openshift-sandboxed-containers-operator podvm-images -o yaml
-
-apiVersion: v1
-data:
-  aws: ami-0e3b1983659f7c7dc ami-039b433de2bf8130d
-kind: ConfigMap
-metadata:
-  name: podvm-images
-  namespace: openshift-sandboxed-containers-operator
-```
+The annotation key for AWS is `LATEST_AMI_ID` and for Azure it's `LATEST_IMAGE_ID`
 
 ## Delete podvm image
 
 Update the IMAGE_ID for Azure or AMI_ID for AWS that you want to delete and then run the following command
 
-```
+```sh
 kubectl delete -f osc-podvm-delete-job.yaml
 ```
-
-You can get the IMAGE_ID or AMI_ID from the `podvm-images` configmap.
-For example, the following command will retrieve the latest azure image from the configmap
-
-```
-kubectl get cm -n openshift-sandboxed-containers-operator podvm-images -o jsonpath='{.data.azure}' | awk '{print $1}'
-```
-
-## PodVM image generation configuration
-
-The configuration used for the podvm image generation is available in the following configmaps:
-
-Azure: azure-podvm-image-cm
-AWS: aws-podvm-image-cm
