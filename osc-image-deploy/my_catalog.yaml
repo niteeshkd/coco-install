@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: my-operator-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: My Operator Catalog
+  sourceType: grpc
+  image: quay.io/bpradipt/openshift-sandboxed-containers-operator-catalog:v1.6.0
+  updateStrategy:
+    registryPoll:
+      interval: 5m

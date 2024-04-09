@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osc-feature-gates
+  namespace: openshift-sandboxed-containers-operator
+data:
+  additionalRuntimeClasses: "true"
+  additionalRuntimeClasses.params: |
+    runtimeClassConfig=kata-cc
+  imageBasedDeployment: "true"
+  imageBasedDeployment.params: |
+    osImageURL=quay.io/kwozyman/tdx:ocp415
+    kernelArguments=kvm_intel.tdx=1
