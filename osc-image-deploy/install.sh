@@ -130,6 +130,17 @@ function apply_operator_manifests() {
     oc apply -f subs.yaml || exit 1
 }
 
+# Function to check if single node OpenShift
+function is_single_node_ocp() {
+    local node_count
+    node_count=$(oc get nodes --no-headers | wc -l)
+    if [ "$node_count" -eq 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Check if oc command is available
 check_oc
 
@@ -150,7 +161,14 @@ oc apply -f kataconfig.yaml || exit 1
 # Wait for sometime before checking for MCP
 sleep 10
 
-wait_for_mcp kata-oc || exit 1
+# If single node OpenShift, then wait for the master MCP to be ready
+# Else wait for kata-oc MCP to be ready
+if is_single_node_ocp; then
+    echo "SNO"
+    wait_for_mcp master || exit 1
+else
+    wait_for_mcp kata-oc || exit 1
+fi
 
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
