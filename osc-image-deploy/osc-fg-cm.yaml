@@ -9,5 +9,5 @@ data:
     runtimeClassConfig=kata-cc
   imageBasedDeployment: "true"
   imageBasedDeployment.params: |
-    osImageURL=quay.io/kwozyman/tdx:ocp415
+    osImageURL=quay.io/bpradipt/coco:ocp415
     kernelArguments=kvm_intel.tdx=1
