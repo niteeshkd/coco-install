@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osc-feature-gate-additional-rc-config
+  namespace: openshift-sandboxed-containers-operator
+data:
+  #runtimeClassConfig: "name1:cpuOverHead1:memOverHead1, name2:cpuOverHead2:memOverHead2"
+  runtimeClassConfig: "kata-cc-tdx,kata-cc-snp,kata-cc-sim"

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osc-feature-gate-image-deploy-config
+  namespace: openshift-sandboxed-containers-operator
+data:
+  osImageURL: "quay.io/bpradipt/coco:ocp415"
+  kernelArguments: "kvm_intel.tdx=1"

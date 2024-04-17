@@ -152,6 +152,10 @@ wait_for_deployment controller-manager openshift-sandboxed-containers-operator |
 # Create the feature gate configmap
 oc apply -f osc-fg-cm.yaml || exit 1
 
+# Create feature configmaps
+oc apply -f osc-fg-image-cm.yaml || exit 1
+oc apply -f osc-fg-rc-cm.yaml || exit 1
+
 # Wait for the service endpoints IP to be available
 wait_for_service_ep_ip webhook-service openshift-sandboxed-containers-operator || exit 1
 

@@ -5,9 +5,4 @@ metadata:
   namespace: openshift-sandboxed-containers-operator
 data:
   additionalRuntimeClasses: "true"
-  additionalRuntimeClasses.params: |
-    runtimeClassConfig=kata-cc
   imageBasedDeployment: "true"
-  imageBasedDeployment.params: |
-    osImageURL=quay.io/bpradipt/coco:ocp415
-    kernelArguments=kvm_intel.tdx=1
