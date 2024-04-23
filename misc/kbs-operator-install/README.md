@@ -1,5 +1,8 @@
 # Deploy the operator in OpenShift
 
+You can run `install.sh` which will deploy the operator
+or you can run the following commands individually
+
 ```
 oc apply -f kbs_catalog.yaml
 oc apply -f ns.yaml
