@@ -79,7 +79,7 @@ function wait_for_service_ep_ip() {
 # Function to wait for MachineConfigPool (MCP) to be ready
 function wait_for_mcp() {
     local mcp=$1
-    local timeout=300
+    local timeout=900
     local interval=5
     local elapsed=0
     local ready=0
