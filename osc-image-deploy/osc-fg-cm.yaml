@@ -4,5 +4,5 @@ metadata:
   name: osc-feature-gates
   namespace: openshift-sandboxed-containers-operator
 data:
-  additionalRuntimeClasses: "true"
-  imageBasedDeployment: "true"
+  AdditionalRuntimeClasses: "true"
+  LayeredImageDeployment: "true"

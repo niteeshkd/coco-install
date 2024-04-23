@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: osc-feature-gate-additional-rc-config
+  name: additionalruntimeclasses-config
   namespace: openshift-sandboxed-containers-operator
 data:
   #runtimeClassConfig: "name1:cpuOverHead1:memOverHead1, name2:cpuOverHead2:memOverHead2"
