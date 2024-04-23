@@ -177,7 +177,7 @@ fi
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
 
-# Wait for runtimeclass kata-cc to be ready
-wait_for_runtimeclass kata-cc || exit 1
+# Wait for runtimeclass kata-cc-sim to be ready
+wait_for_runtimeclass kata-cc-sim || exit 1
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
