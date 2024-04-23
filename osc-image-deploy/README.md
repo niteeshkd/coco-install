@@ -42,4 +42,7 @@ status of the `kata-oc` MachineConfigPool
 oc get mcp
 ```
 
-After successful install `kata` and `kata-cc` runtimeclass will be created
+After successful install `kata`, `kata-cc-sim`, `kata-cc-tdx` and `kata-cc-snp` runtimeclasses will be created
+
+If you are using a non TEE hardware, then use the `kata-cc-sim` runtimeclass to play with the CoCo workflow
+
