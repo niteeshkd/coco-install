@@ -1,0 +1,24 @@
+FROM quay.io/fedora/fedora:39 as downloader
+
+ARG KBS_CLIENT_DOWNLOAD_URL=ghcr.io/confidential-containers/staged-images/kbs-client
+ARG KBS_CLIENT_VERSION=sample_only-x86_64-linux-gnu-65ee7e1acccd13dcb515058e71c5f8bfb4281e35
+# Install oras
+RUN dnf install -y curl tar
+
+RUN VERSION="1.1.0" && \
+    curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz" && \
+    mkdir -p oras-install/ && \
+   tar -zxf oras_${VERSION}_*.tar.gz -C oras-install/ &&\
+   mv oras-install/oras /usr/local/bin/  &&\
+   rm -rf oras_${VERSION}_*.tar.gz oras-install/
+
+ENV KBS_CLIENT_VERSION ${KBS_CLIENT_VERSION}
+ENV KBS_CLIENT_DOWNLOAD_URL ${KBS_CLIENT_DOWNLOAD_URL}
+
+RUN  oras pull -o / ${KBS_CLIENT_DOWNLOAD_URL}:${KBS_CLIENT_VERSION}
+
+
+FROM quay.io/fedora/fedora:39
+
+COPY --from=downloader /kbs-client /usr/bin/
+RUN chmod +x /usr/bin/kbs-client
