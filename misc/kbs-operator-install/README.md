@@ -16,6 +16,12 @@ Check for operator controller manager in `kbs-operator-system` namespace
 oc get pods -n kbs-operator-system
 ```
 
+# Allow anyuid in KBS pod
+
+```
+oc adm policy add-scc-to-user anyuid -z default -n kbs-operator-system
+```
+
 # Add KBS configuration
 
 ## Create keys
@@ -47,6 +53,12 @@ kbsSecretResources: ["kbsres1"]
 
 ```
 oc apply -f kbsconfig.yaml
+```
+
+
+Note: If planning to use latest upstream images, then run the following command
+```
+oc set image -n kbs-operator-system deployment/kbs-deployment kbs=ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest as=ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest rvps=ghcr.io/confidential-containers/staged-images/rvps:latest
 ```
 
 ### Enable permissive resource policy
