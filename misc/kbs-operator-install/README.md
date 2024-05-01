@@ -67,7 +67,9 @@ Note: If planning to use latest upstream images, then run the following command
 oc set image -n kbs-operator-system deployment/kbs-deployment kbs=ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest as=ghcr.io/confidential-containers/staged-images/coco-as-grpc:latest rvps=ghcr.io/confidential-containers/staged-images/rvps:latest
 ```
 
-### Enable permissive resource policy
+### Enable permissive resource policy [Optional]
+
+For testing with sample attester, you will have to do this:
 
 Get the KBS deployment pod name
 ```
@@ -77,6 +79,11 @@ POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n kbs
 Allow all access to resources
 ```
 oc exec -n kbs-operator-system -it "$POD_NAME" -c kbs  -- sed -i 's/false/true/g' /opa/confidential-containers/kbs/policy.rego
+```
+
+Likewise you can enable permissive policy for Attestation Service (AS) for testing
+```
+oc exec -n kbs-operator-system -it "$POD_NAME" -c as  -- sed -i 's/false/true/g' /opt/confidential-containers/attestation-service/opa/default.rego
 ```
 
 ### Deploy sample kbs_client
@@ -92,6 +99,3 @@ Get the resource
 ```
 oc exec -it -n kbs-operator-system kbs-client -- /usr/bin/kbs-client --url http://kbs-service:8080 get-resource --path default/kbsres1/key1
 ```
-
-
-
