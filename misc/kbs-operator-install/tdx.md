@@ -78,3 +78,62 @@ oc patch -n kbs-operator-system deploy/kbs-deployment -p='
 ```
 oc set image -n kbs-operator-system deployment/kbs-deployment kbs=ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest as=quay.io/bpradipt/kbs-as:tdx rvps=ghcr.io/confidential-containers/staged-images/rvps:latest
 ```
+
+## Verify E2E attesation
+
+### Create KBS client
+
+Create the manifest
+
+```
+cat > kbsclient-tdx.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kbs-test
+  namespace: default
+spec:
+  containers:
+  - name: kbs-test
+    image: quay.io/fidencio/kbs-client:latest
+    imagePullPolicy: IfNotPresent
+    command:
+      - sleep
+      - "360000"
+  runtimeClassName: kata-cc-tdx
+EOF
+```
+
+Create the pod
+
+```
+oc apply -f kbsclient-tdx.yaml
+```
+
+### Get secret resource from trusty
+
+Get the KBS service IP
+```
+KBS_SVC_IP=$(oc get svc -n kbs-operator-system kbs-service -o jsonpath={.spec.clusterIP})
+echo ${KBS_SVC_IP}
+```
+
+Retrieve secret
+```
+oc exec -it kbs-test -- kbs-client --url http://"REPLACE_WITH_THE_VALUE_OF_KBS_SVC_IP":8081 get-resource --path default/kbsres1/key1
+```
+
+You can check the KBS and AS logs as well
+
+```
+# KBS logs
+oc logs -n kbs-operator-system deploy/kbs-deployment -c kbs
+
+# AS logs
+oc logs -n kbs-operator-system deploy/kbs-deployment -c as
+```
+
+
+
+
+
