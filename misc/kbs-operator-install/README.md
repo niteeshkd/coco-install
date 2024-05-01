@@ -1,5 +1,11 @@
 # Deploy the operator in OpenShift
 
+Note: For vanilla Kubernetes cluster, you'll need to make
+the following changes
+
+- Install [Operator Lifecycle Manager](https://operatorhub.io/how-to-install-an-operator)
+- Change the `oc` command to `kubectl` or create a temporary alias
+
 You can run `install.sh` which will deploy the operator
 or you can run the following commands individually
 
@@ -84,7 +90,7 @@ oc apply -f kbsclient.yaml
 
 Get the resource
 ```
-oc exec -it -n kbs-operator-system kbs-client -- /kbs-client --url http://kbs-service:8080 get-resource --path default/kbsres1/key1
+oc exec -it -n kbs-operator-system kbs-client -- /usr/bin/kbs-client --url http://kbs-service:8080 get-resource --path default/kbsres1/key1
 ```
 
 
