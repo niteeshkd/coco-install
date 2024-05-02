@@ -89,7 +89,7 @@ Create the pod
 oc apply -f kbsclient-tdx.yaml
 ```
 
-### Get secret resource from trusty
+### Get secret resource from Trustee
 
 Get the KBS service IP
 ```

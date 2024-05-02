@@ -95,7 +95,7 @@ oc apply -f kbsclient-sim.yaml
 
 ```
 
-### Get secret resource from trusty
+### Get secret resource from Trustee
 
 Get the KBS service IP
 ```
