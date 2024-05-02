@@ -7,7 +7,7 @@ spec:
   runtimeClassName: kata-cc-sim
   containers:
   - name: kbs-client
-    image: quay.io/bpradipt/kbs-client:latest
+    image: quay.io/confidential-containers/kbs-client:latest
     imagePullPolicy: IfNotPresent
     command:
       - sleep

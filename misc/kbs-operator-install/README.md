@@ -88,10 +88,10 @@ oc exec -n kbs-operator-system -it "$POD_NAME" -c as  -- sed -i 's/false/true/g'
 
 ### Deploy sample kbs_client
 
-Deploy the sample client
+Deploy the sample KBS client. This doesn't use any real TEE. 
 
 ```
-oc apply -f kbsclient.yaml
+oc apply -f kbsclient-sim.yaml
 
 ```
 

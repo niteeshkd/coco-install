@@ -95,7 +95,7 @@ metadata:
 spec:
   containers:
   - name: kbs-test
-    image: quay.io/fidencio/kbs-client:latest
+    image: quay.io/confidential-containers/kbs-client:latest
     imagePullPolicy: IfNotPresent
     command:
       - sleep
