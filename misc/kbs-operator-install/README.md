@@ -88,14 +88,33 @@ oc exec -n kbs-operator-system -it "$POD_NAME" -c as  -- sed -i 's/false/true/g'
 
 ### Deploy sample kbs_client
 
-Deploy the sample KBS client. This doesn't use any real TEE. 
+Deploy the sample KBS client. This doesn't use any real TEE.
 
 ```
 oc apply -f kbsclient-sim.yaml
 
 ```
 
-Get the resource
+### Get secret resource from trusty
+
+Get the KBS service IP
 ```
-oc exec -it -n kbs-operator-system kbs-client -- /usr/bin/kbs-client --url http://kbs-service:8080 get-resource --path default/kbsres1/key1
+KBS_SVC_IP=$(oc get svc -n kbs-operator-system kbs-service -o jsonpath={.spec.clusterIP})
+echo ${KBS_SVC_IP}
 ```
+
+Retrieve the secret resource
+```
+oc exec -it kbs-client -- kbs-client --url http://"REPLACE_WITH_THE_VALUE_OF_KBS_SVC_IP":8081 get-resource --path default/kbsres1/key1
+```
+
+You can check the KBS and AS logs as well
+
+```
+# KBS logs
+oc logs -n kbs-operator-system deploy/kbs-deployment -c kbs
+
+# AS logs
+oc logs -n kbs-operator-system deploy/kbs-deployment -c as
+```
+

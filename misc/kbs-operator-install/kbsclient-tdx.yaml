@@ -3,7 +3,6 @@ kind: Pod
 metadata:
   name: kbs-client
 spec:
-  runtimeClassName: kata-cc-sim
   containers:
   - name: kbs-client
     image: quay.io/confidential-containers/kbs-client:latest
@@ -14,3 +13,4 @@ spec:
     env:
       - name: RUST_LOG
         value:  none
+  runtimeClassName: kata-cc-tdx

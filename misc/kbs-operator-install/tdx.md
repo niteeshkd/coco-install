@@ -83,27 +83,6 @@ oc set image -n kbs-operator-system deployment/kbs-deployment kbs=ghcr.io/confid
 
 ### Create KBS client
 
-Create the manifest
-
-```
-cat > kbsclient-tdx.yaml << EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: kbs-test
-  namespace: default
-spec:
-  containers:
-  - name: kbs-test
-    image: quay.io/confidential-containers/kbs-client:latest
-    imagePullPolicy: IfNotPresent
-    command:
-      - sleep
-      - "360000"
-  runtimeClassName: kata-cc-tdx
-EOF
-```
-
 Create the pod
 
 ```
@@ -120,7 +99,7 @@ echo ${KBS_SVC_IP}
 
 Retrieve secret
 ```
-oc exec -it kbs-test -- kbs-client --url http://"REPLACE_WITH_THE_VALUE_OF_KBS_SVC_IP":8081 get-resource --path default/kbsres1/key1
+oc exec -it kbs-client -- kbs-client --url http://"REPLACE_WITH_THE_VALUE_OF_KBS_SVC_IP":8081 get-resource --path default/kbsres1/key1
 ```
 
 You can check the KBS and AS logs as well
