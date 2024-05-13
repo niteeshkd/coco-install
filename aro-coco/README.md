@@ -3,6 +3,10 @@
 Run the all-in-one setup script `./install.sh` to deploy ARO
 and install OSC operator.
 
+When using early test builds of the operator, then run the script
+with `-m` option. This will create image mirroring configuration
+
+
 ## Install the OSC operator
 
 ```sh
