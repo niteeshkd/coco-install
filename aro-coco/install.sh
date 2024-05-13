@@ -12,6 +12,7 @@ ARO_WORKER_SUBNET_CIDR="${ARO_WORKER_SUBNET_CIDR:-10.0.2.0/23}"
 ARO_CLUSTER_NAME="${ARO_CLUSTER_NAME:-aro-cluster}"
 ARO_VERSION="${ARO_VERSION:-4.14.16}"
 OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
+MIRRORING=false
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -402,6 +403,32 @@ function create_ssh_key_secret() {
 
 }
 
+# Handle few optional parameters
+# Use getopts to handle optional parameters
+# "-h" option to display help
+# "-m" option to install the image mirroring config
+
+while getopts "hm" opt; do
+    case $opt in
+    h)
+        echo "Usage: install.sh [-h] [-m]"
+        echo "Options:"
+        echo "  -h  Display help"
+        echo "  -m  Install the image mirroring config"
+        exit 0
+        ;;
+    m)
+        echo "Mirroring option passed"
+        # Set global variable to indicate mirroring option is passed
+        MIRRORING=true
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        exit 1
+        ;;
+    esac
+done
+
 # Check if oc command is available
 check_oc
 
@@ -445,8 +472,11 @@ export KUBECONFIG=$KUBECONFIG_FILE
 # Display the cluster information
 oc cluster-info
 
-# Create image mirroring config
-oc apply -f image_mirroring.yaml || exit 1
+# If MIRRORING is true, then create the image mirroring config
+if [ "$MIRRORING" = true ]; then
+    echo "Creating image mirroring config"
+    oc apply -f image-mirroring.yaml || exit 1
+fi
 
 # Apply the operator manifests
 apply_operator_manifests
