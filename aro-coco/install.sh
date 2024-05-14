@@ -13,6 +13,7 @@ ARO_CLUSTER_NAME="${ARO_CLUSTER_NAME:-aro-cluster}"
 ARO_VERSION="${ARO_VERSION:-4.14.16}"
 OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
+ADD_IMAGE_PULL_SECRET=false
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -26,6 +27,14 @@ function check_oc() {
 function check_az() {
     if ! command -v az &>/dev/null; then
         echo "az command not found. Please install the az CLI tool."
+        exit 1
+    fi
+}
+
+# Function to check if the jq command is available
+function check_jq() {
+    if ! command -v jq &>/dev/null; then
+        echo "jq command not found. Please install the jq CLI tool."
         exit 1
     fi
 }
@@ -403,24 +412,56 @@ function create_ssh_key_secret() {
 
 }
 
+# Function to set additional cluster-wide image pull secret
+# Requires PULL_SECRET_JSON environment variable to be set
+# eg. PULL_SECRET_JSON='{"my.registry.io": {"auth": "ABC"}}'
+function add_image_pull_secret() {
+    # Check if SECRET_JSON is set
+    if [ -z "$PULL_SECRET_JSON" ]; then
+        echo "PULL_SECRET_JSON environment variable is not set"
+        echo "example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
+        exit 1
+    fi
+
+    # Get the existing secret
+    oc get -n openshift-config secret/pull-secret -ojson | jq -r '.data.".dockerconfigjson"' | base64 -d | jq '.' >cluster-pull-secret.json ||
+        exit 1
+
+    # Add the new secret to the existing secret
+    jq --argjson data "$PULL_SECRET_JSON" '.auths |= ($data + .)' cluster-pull-secret.json >cluster-pull-secret-mod.json || exit 1
+
+    # Set the image pull secret
+    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=cluster-pull-secret-mod.json || exit 1
+
+}
+
 # Handle few optional parameters
 # Use getopts to handle optional parameters
 # "-h" option to display help
 # "-m" option to install the image mirroring config
+# "-s '{"my.registry.io": {"auth": "ABC"}}' option to add additional cluster-wide image pull secret"
 
-while getopts "hm" opt; do
+while getopts "hms" opt; do
     case $opt in
     h)
         echo "Usage: install.sh [-h] [-m]"
         echo "Options:"
-        echo "  -h  Display help"
-        echo "  -m  Install the image mirroring config"
+        echo "  -h Display help"
+        echo "  -m Install the image mirroring config"
+        echo "  -s Set additional cluster-wide image pull secret."
+        echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
+        echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
         exit 0
         ;;
     m)
         echo "Mirroring option passed"
         # Set global variable to indicate mirroring option is passed
         MIRRORING=true
+        ;;
+    s)
+        echo "Setting additional cluster-wide image pull secret"
+        # Check if jq command is available
+        ADD_IMAGE_PULL_SECRET=true
         ;;
     \?)
         echo "Invalid option: -$OPTARG" >&2
@@ -476,6 +517,14 @@ oc cluster-info
 if [ "$MIRRORING" = true ]; then
     echo "Creating image mirroring config"
     oc apply -f image-mirroring.yaml || exit 1
+fi
+
+# If ADD_IMAGE_PULL_SECRET is true, then add additional cluster-wide image pull secret
+if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
+    echo "Adding additional cluster-wide image pull secret"
+    # Check if jq command is available
+    check_jq
+    add_image_pull_secret
 fi
 
 # Apply the operator manifests
