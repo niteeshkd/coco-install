@@ -212,7 +212,7 @@ function create_virtual_network() {
     local vnet_cidr=$3
     # If any of the parameters are empty then exit
     if [ -z "$resource_group" ] || [ -z "$vnet_name" ] ||
-        [ -z "$vnet_cidr" ] || [ -z "$subnet_name" ] || [ -z "$subnet_cidr" ]; then
+        [ -z "$vnet_cidr" ] ; then
         echo "Resource group, vnet name, vnet cidr, subnet name or subnet cidr is empty"
         exit 1
     fi
