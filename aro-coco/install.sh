@@ -542,6 +542,13 @@ oc cluster-info
 if [ "$MIRRORING" = true ]; then
     echo "Creating image mirroring config"
     oc apply -f image_mirroring.yaml || exit 1
+
+    # Sleep for sometime before checking MCP status
+    sleep 10
+
+    echo "Waiting for MCP to be ready"
+    wait_for_mcp master || exit 1
+    wait_for_mcp worker || exit 1
 fi
 
 # If ADD_IMAGE_PULL_SECRET is true, then add additional cluster-wide image pull secret
@@ -550,6 +557,14 @@ if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
     # Check if jq command is available
     check_jq
     add_image_pull_secret
+
+    # Sleep for sometime before checking MCP status
+    sleep 10
+
+    echo "Waiting for MCP to be ready"
+    wait_for_mcp master || exit 1
+    wait_for_mcp worker || exit 1
+
 fi
 
 # Apply the operator manifests
