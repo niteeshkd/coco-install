@@ -516,7 +516,7 @@ oc cluster-info
 # If MIRRORING is true, then create the image mirroring config
 if [ "$MIRRORING" = true ]; then
     echo "Creating image mirroring config"
-    oc apply -f image-mirroring.yaml || exit 1
+    oc apply -f image_mirroring.yaml || exit 1
 fi
 
 # If ADD_IMAGE_PULL_SECRET is true, then add additional cluster-wide image pull secret
