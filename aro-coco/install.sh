@@ -212,7 +212,7 @@ function create_virtual_network() {
     local vnet_cidr=$3
     # If any of the parameters are empty then exit
     if [ -z "$resource_group" ] || [ -z "$vnet_name" ] ||
-        [ -z "$vnet_cidr" ] ; then
+        [ -z "$vnet_cidr" ]; then
         echo "Resource group, vnet name, vnet cidr, subnet name or subnet cidr is empty"
         exit 1
     fi
@@ -327,6 +327,14 @@ function build_peer_pods_secret() {
         exit 1
     fi
 
+    # Check if the secret already exists
+    oc get secret peer-pods-secret -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        echo "peer-pods-secret Secret already exists"
+        return
+    fi
+
     # Use the above values to create peer-pods-secret Secret in the openshift-sandboxed-containers-operator namespace
     oc create secret generic peer-pods-secret -n openshift-sandboxed-containers-operator \
         --from-literal=AZURE_CLIENT_ID="$AZURE_CLIENT_ID" \
@@ -376,8 +384,16 @@ function build_peer_pods_cm {
     # AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
     # AZURE_NSG_ID: "${ARO_NSG_ID}"
     # DISABLECVM: "false"
-    # AZURE_IMAGE_ID: "*****"
+    # AZURE_IMAGE_ID: ""
     # PROXY_TIMEOUT: "5m"
+
+    # Check if the ConfigMap already exists
+    oc get configmap peer-pods-cm -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        echo "peer-pods-cm ConfigMap already exists"
+        return
+    fi
 
     # Use the above values to create peer-pods-cm ConfigMap in the openshift-sandboxed-containers-operator namespace
     oc create configmap peer-pods-cm -n openshift-sandboxed-containers-operator \
@@ -397,6 +413,15 @@ function build_peer_pods_cm {
 
 # Function to create ssh key secret
 function create_ssh_key_secret() {
+
+    # Check if the ssh-key-secret already exists
+
+    oc get secret ssh-key-secret -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        echo "ssh-key-secret Secret already exists"
+        return
+    fi
 
     # Use ssh-keygen to generate the ssh key pair in the current directory
     # Both the private and public keys should be stored in the current directory from where
