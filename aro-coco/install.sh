@@ -14,6 +14,7 @@ ARO_VERSION="${ARO_VERSION:-4.14.16}"
 OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
+GA_RELEASE=true
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -156,9 +157,14 @@ function wait_for_runtimeclass() {
 function apply_operator_manifests() {
     # Apply the manifests, error exit if any of them fail
     oc apply -f ns.yaml || exit 1
-    oc apply -f osc_catalog.yaml || exit 1
     oc apply -f og.yaml || exit 1
-    oc apply -f subs.yaml || exit 1
+    if [[ "$GA_RELEASE" == "true" ]]; then
+        oc apply -f subs-ga.yaml || exit 1
+    else
+        oc apply -f osc_catalog.yaml || exit 1
+        oc apply -f subs.yaml || exit 1
+    fi
+
 }
 
 # Function to check if single node OpenShift
@@ -460,13 +466,18 @@ function add_image_pull_secret() {
 
 }
 
-# Handle few optional parameters
-# Use getopts to handle optional parameters
-# "-h" option to display help
-# "-m" option to install the image mirroring config
-# "-s '{"my.registry.io": {"auth": "ABC"}}' option to add additional cluster-wide image pull secret"
+function display_help() {
+    echo "Usage: install.sh [-h] [-m] [-s]"
+    echo "Options:"
+    echo "  -h Display help"
+    echo "  -m Install the image mirroring config"
+    echo "  -s Set additional cluster-wide image pull secret."
+    echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
+    echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
+    echo "  -b Use non-ga operator bundles"
+}
 
-while getopts "hms" opt; do
+while getopts "hmsb" opt; do
     case $opt in
     h)
         echo "Usage: install.sh [-h] [-m]"
@@ -487,6 +498,10 @@ while getopts "hms" opt; do
         echo "Setting additional cluster-wide image pull secret"
         # Check if jq command is available
         ADD_IMAGE_PULL_SECRET=true
+        ;;
+    b)
+        echo "Using non-ga operator bundles"
+        GA_RELEASE=false
         ;;
     \?)
         echo "Invalid option: -$OPTARG" >&2
