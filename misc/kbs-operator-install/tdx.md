@@ -73,12 +73,6 @@ oc patch -n kbs-operator-system deploy/kbs-deployment -p='
 '
 ```
 
-## Update KBS deployment images
-
-```
-oc set image -n kbs-operator-system deployment/kbs-deployment kbs=ghcr.io/confidential-containers/staged-images/kbs-grpc-as:latest as=quay.io/bpradipt/kbs-as:tdx rvps=ghcr.io/confidential-containers/staged-images/rvps:latest
-```
-
 ## Verify E2E attesation
 
 ### Create KBS client
@@ -111,8 +105,3 @@ oc logs -n kbs-operator-system deploy/kbs-deployment -c kbs
 # AS logs
 oc logs -n kbs-operator-system deploy/kbs-deployment -c as
 ```
-
-
-
-
-
