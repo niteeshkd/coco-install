@@ -12,6 +12,8 @@ metadata:
 spec:
   kbsConfigMapName: kbs-config-grpc-sample
   kbsAsConfigMapName: as-config-grpc-sample
+  kbsRvpsConfigMapName: rvps-config-grpc-sample
+  kbsRvpsRefValuesConfigMapName: rvps-reference-values-sample
   kbsAuthSecretName: kbs-auth-public-key
   kbsServiceType: ClusterIP
   #kbsServiceType: NodePort
