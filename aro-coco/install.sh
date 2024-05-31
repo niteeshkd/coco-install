@@ -528,6 +528,25 @@ function delete_aro_cluster() {
     az aro delete --resource-group "$resource_group" --name "$cluster_name" --yes || exit 1
 }
 
+# Function to print all the env variables
+function print_env_vars() {
+    echo "AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP"
+    echo "AZURE_REGION: $AZURE_REGION"
+    echo "ARO_VNET: $ARO_VNET"
+    echo "ARO_VNET_CIDR: $ARO_VNET_CIDR"
+    echo "ARO_MASTER_SUBNET: $ARO_MASTER_SUBNET"
+    echo "ARO_MASTER_SUBNET_CIDR: $ARO_MASTER_SUBNET_CIDR"
+    echo "ARO_WORKER_SUBNET: $ARO_WORKER_SUBNET"
+    echo "ARO_WORKER_SUBNET_CIDR: $ARO_WORKER_SUBNET_CIDR"
+    echo "ARO_CLUSTER_NAME: $ARO_CLUSTER_NAME"
+    echo "ARO_VERSION: $ARO_VERSION"
+    echo "OCP_PULL_SECRET_LOCATION: $OCP_PULL_SECRET_LOCATION"
+    echo "ADD_IMAGE_PULL_SECRET: $ADD_IMAGE_PULL_SECRET"
+    echo "GA_RELEASE: $GA_RELEASE"
+    echo "MIRRORING: $MIRRORING"
+    echo "KUBECONFIG_FILE: $KUBECONFIG_FILE"
+}
+
 while getopts "hmsbd" opt; do
     case $opt in
     h)
@@ -675,3 +694,6 @@ wait_for_runtimeclass kata || exit 1
 wait_for_runtimeclass kata-remote || exit 1
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
+
+# Print all the env variables values
+print_env_vars
