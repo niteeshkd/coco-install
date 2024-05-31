@@ -480,13 +480,7 @@ function display_help() {
 while getopts "hmsb" opt; do
     case $opt in
     h)
-        echo "Usage: install.sh [-h] [-m]"
-        echo "Options:"
-        echo "  -h Display help"
-        echo "  -m Install the image mirroring config"
-        echo "  -s Set additional cluster-wide image pull secret."
-        echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
-        echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
+        display_help
         exit 0
         ;;
     m)
@@ -505,6 +499,7 @@ while getopts "hmsb" opt; do
         ;;
     \?)
         echo "Invalid option: -$OPTARG" >&2
+        display_help
         exit 1
         ;;
     esac
