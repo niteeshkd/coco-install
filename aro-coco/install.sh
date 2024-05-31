@@ -476,6 +476,7 @@ function display_help() {
     echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
     echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
     echo "  -b Use non-ga operator bundles"
+    echo "  -d Delete ARO cluster"
 }
 
 # Function to verify all required variables are set and
@@ -513,7 +514,21 @@ function verify_params() {
 
 }
 
-while getopts "hmsb" opt; do
+# Function to delete ARO cluster
+function delete_aro_cluster() {
+    local resource_group=$1
+    local cluster_name=$2
+
+    # If any of the parameters are empty then exit
+    if [ -z "$resource_group" ] || [ -z "$cluster_name" ]; then
+        echo "Resource group or cluster name is empty"
+        exit 1
+    fi
+
+    az aro delete --resource-group "$resource_group" --name "$cluster_name" --yes || exit 1
+}
+
+while getopts "hmsbd" opt; do
     case $opt in
     h)
         display_help
@@ -532,6 +547,11 @@ while getopts "hmsb" opt; do
     b)
         echo "Using non-ga operator bundles"
         GA_RELEASE=false
+        ;;
+    d)
+        echo "Deleting ARO cluster"
+        delete_aro_cluster "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME"
+        exit 0
         ;;
     \?)
         echo "Invalid option: -$OPTARG" >&2
