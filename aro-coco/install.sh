@@ -478,6 +478,41 @@ function display_help() {
     echo "  -b Use non-ga operator bundles"
 }
 
+# Function to verify all required variables are set and
+# required files exist
+
+function verify_params() {
+
+    # Check if the required environment variables are set
+    if [ -z "$AZURE_RESOURCE_GROUP" ] ||
+        [ -z "$AZURE_REGION" ] ||
+        [ -z "$ARO_VNET" ] ||
+        [ -z "$ARO_VNET_CIDR" ] ||
+        [ -z "$ARO_MASTER_SUBNET" ] ||
+        [ -z "$ARO_MASTER_SUBNET_CIDR" ] ||
+        [ -z "$ARO_WORKER_SUBNET" ] ||
+        [ -z "$ARO_WORKER_SUBNET_CIDR" ] ||
+        [ -z "$ARO_CLUSTER_NAME" ] ||
+        [ -z "$ARO_VERSION" ] ||
+        [ -z "$OCP_PULL_SECRET_LOCATION" ]; then
+        echo "One or more required environment variables are not set"
+        exit 1
+    fi
+
+    # Check if the pull secret file exists
+    if [ ! -f "$OCP_PULL_SECRET_LOCATION" ]; then
+        echo "Pull secret file $OCP_PULL_SECRET_LOCATION doesn't exist"
+        exit 1
+    fi
+
+    # If ADD_IMAGE_PULL_SECRET is true,  then check if PULL_SECRET_JSON is set
+    if [ "$ADD_IMAGE_PULL_SECRET" = true ] && [ -z "$PULL_SECRET_JSON" ]; then
+        echo "ADD_IMAGE_PULL_SECRET is set but required environment variable: PULL_SECRET_JSON is not set"
+        exit 1
+    fi
+
+}
+
 while getopts "hmsb" opt; do
     case $opt in
     h)
@@ -505,6 +540,9 @@ while getopts "hmsb" opt; do
         ;;
     esac
 done
+
+# Verify all required parameters are set
+verify_params
 
 # Check if oc command is available
 check_oc
