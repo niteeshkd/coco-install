@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defaults
-AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-aro-rg}"
+AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-aro-rg-$(shuf -i 1000-9999 -n 1)}"
 AZURE_REGION="${AZURE_REGION:-eastus}"
 ARO_VNET="${ARO_VNET:-aro-vnet}"
 ARO_VNET_CIDR="${ARO_VNET_CIDR:-10.0.0.0/22}"
@@ -441,6 +441,7 @@ function create_ssh_key_secret() {
         --from-file=id_rsa=id_rsa \
         --from-file=id_rsa.pub=id_rsa.pub || exit 1
 
+    echo "Both the SSH public key and private key are part of the ssh-key-secret"
 }
 
 # Function to set additional cluster-wide image pull secret
