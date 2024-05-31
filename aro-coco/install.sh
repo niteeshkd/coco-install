@@ -133,7 +133,7 @@ function wait_for_mcp() {
 function wait_for_runtimeclass() {
 
     local runtimeclass=$1
-    local timeout=300
+    local timeout=900
     local interval=5
     local elapsed=0
     local ready=0
