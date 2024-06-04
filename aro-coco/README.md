@@ -1,39 +1,36 @@
 # Setup
 
-Run the all-in-one setup script `./install.sh` to deploy ARO
-and install OSC operator.
+## Install OSC GA release
 
-When using early test builds of the operator, then run the script
-with `-m` option. This will create image mirroring configuration
+- Update `startingCSV` key in the `subs-ga.yaml` file to use the GA release you need.
 
-If the operator images are in an authenticated registry, then you'll need to
-update the OCP cluster-wide image pull secret by following these steps
+- Kickstart the installation by running the following:
 
-```sh
-export PULL_SECRET_JSON='{"my.registry.io": {"auth": "ABC"}}'
-./install.sh -s
-```
+  ```sh
+  ./install.sh
+  ```
 
-## Install the OSC operator
+  This will deploy ARO and install the OSC operator.
 
-```sh
-oc apply -f image_mirroring.yaml
-oc apply -f osc_catalog.yaml
-oc apply -f ns.yaml
-oc apply -f og.yaml
-oc apply -f subs.yaml
-```
 
-You should see controller-manager pods in the `openshift-sandboxed-containers-operator` namespace
+## Install OSC pre-GA release
 
-```sh
-oc get pods -n openshift-sandboxed-containers-operator
-```
+- Update osc_catalog.yaml to point to the pre-GA catalog
+  For example if you want to install the pre-GA 1.6.0-57 build, then change the
+  image entry to the following
+  ```sh
+  image: quay.io/openshift_sandboxed_containers/openshift-sandboxed-containers-operator-catalog:1.6.0-57
+  ```
+- The pre-GA build images are in an authenticated registry, so you'll need to
+  set the `PULL_SECRET_JSON` variable with the registry credentials. Following is an example:
 
-## Create peer-pods-cm and peer-pods-secret objects
+  ```sh
+  export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'
+  ```
 
-## Create kataconfig
+- Kickstart the installation by running the following:
+  ```sh
+  ./install.sh -m -s -b
+  ```
 
-```sh
-oc apply -f kataconfig.yaml
-```
+  This will deploy ARO and install the pre-GA release of OSC operator.
