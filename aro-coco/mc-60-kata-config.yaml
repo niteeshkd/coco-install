@@ -13,6 +13,6 @@ spec:
       files:
         - contents:
             compression: gzip
-            source: data:;base64,H4sIAAAAAAAC/2yOwW7DIAyG7zxFxHmAtHtve4uqQpR4jdVgI2Oo9vZT0m659GTp//z99jkLspdOigX+ZvP3pMkJFFa4mFcaa9JlOk02cNWwbYQrUshMmpBAZtcWLG5Xx6fLnNn+u/pTYXNHOTJh1r1POoWRD5CZvvH25t4TdEmKTK//vHJZramCA1e4wRwfqAt3jQs3jTMMzNCm06TSwaR15QfMMRGx7jUbOhuL7O/9CkKg0HwWdOy/nq79MBfzGwAA///G9xuWKQEAAA==
+            source: data:;base64,H4sIAAAAAAAC/2yPwW4DIQxE73zFinMBqffc+hdRhAjrZq2AvTKGqH9f7SbpXnqyNOM3Y5+zIHvppFjhPZu/J01OoLLCxbzUuCZdptNkA68ato1wRQqZSRMSyOzagtXt6Ph0mTPbP1Z/VtjYUQ9NmHXPk05h5MPITN94+6fvaXRJikyv+7xyLdasggML3GCOD9SFu8aFm8YZBmZo02lS6XD80kuJWNMN3k4qhR8wx0TEuhds0NlYZH/vVxACheazoGP/9Uy1H+ZifgMAAP//3tPYQkMBAAA=
           mode: 420
           path: /etc/crio/crio.conf.d/50-kata-remote
