@@ -16,6 +16,7 @@ MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
 CREATE_ARO_CLUSTER=true
+UPDATE_KATA_SHIM=false
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -479,6 +480,7 @@ function display_help() {
     echo "  -b Use non-ga operator bundles"
     echo "  -o Only deploy OSC operator"
     echo "  -d Delete ARO cluster"
+    echo "  -k Updating Kata shim"
 }
 
 # Function to verify all required variables are set and
@@ -530,6 +532,21 @@ function delete_aro_cluster() {
     az aro delete --resource-group "$resource_group" --name "$cluster_name" --yes || exit 1
 }
 
+# Function to update Kata Shim
+function update_kata_shim() {
+
+    # Install daemonset for kata-shim
+    oc apply -f kata-shim-ds.yaml || exit 1
+
+    # Check if the daemonset is ready
+    oc wait --for=jsonpath='{.status.numberReady}'=1 ds/kata-shim -n openshift-sandboxed-containers-operator --timeout=300s || exit 1
+
+    # Apply the MachineConfig to update the associated crio config
+    oc apply -f mc-60-kata-config.yaml || exit 1
+
+    echo "Kata Shim is updated successfully"
+}
+
 # Function to print all the env variables
 function print_env_vars() {
     echo "AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP"
@@ -549,7 +566,7 @@ function print_env_vars() {
     echo "KUBECONFIG_FILE: $KUBECONFIG_FILE"
 }
 
-while getopts "hmsbdo" opt; do
+while getopts "hmsbdok" opt; do
     case $opt in
     h)
         display_help
@@ -575,8 +592,12 @@ while getopts "hmsbdo" opt; do
         exit 0
         ;;
     o)
-        echo "Instally OSC operator only"
+        echo "Install OSC operator only"
         CREATE_ARO_CLUSTER=false
+        ;;
+    k)
+        echo "Updating Kata Shim"
+        UPDATE_KATA_SHIM=true
         ;;
 
     \?)
@@ -702,6 +723,19 @@ wait_for_runtimeclass kata || exit 1
 
 # Wait for runtimeclass kata-remote to be ready
 wait_for_runtimeclass kata-remote || exit 1
+
+# If UPDATE_KATA_SHIM is true, then update Kata Shim
+if [ "$UPDATE_KATA_SHIM" = true ]; then
+    update_kata_shim
+    # If single node OpenShift, then wait for the master MCP to be ready
+    # Else wait for kata-oc MCP to be ready
+    if is_single_node_ocp; then
+        echo "SNO"
+        wait_for_mcp master || exit 1
+    else
+        wait_for_mcp kata-oc || exit 1
+    fi
+fi
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
 

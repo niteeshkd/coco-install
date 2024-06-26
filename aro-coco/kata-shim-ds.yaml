@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kata-shim
+  namespace: openshift-sandboxed-containers-operator
+spec:
+  selector:
+    matchLabels:
+      app: shim-copy
+  template:
+    metadata:
+      labels:
+        app: shim-copy
+    spec:
+      serviceAccountName: default
+      nodeSelector:
+        node-role.kubernetes.io/kata-oc: ""
+      initContainers:
+        - name: file-copy-container
+          image: ghcr.io/kata-containers/kata-deploy-ci:kata-containers-258100e83d5f708fe231469470ad2173da6ab258-amd64
+
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "copy the kata files"
+              mkdir -p /host-opt/kata/bin
+              cp -f /opt/kata-artifacts/opt/kata/bin/containerd-shim-kata-v2 /host-opt/kata/bin/containerd-shim-kata-v2-coco
+              echo "copying completed..."
+          volumeMounts:
+            - name: host-opt-volume
+              mountPath: /host-opt
+          securityContext:
+            privileged: true
+      containers:
+        - name: selinux-label
+          image: registry.access.redhat.com/ubi8/ubi
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "label the files"
+
+              chcon --reference=/host-usr/bin/containerd-shim-kata-v2 /host-opt/kata/bin/containerd-shim-kata-v2-coco
+
+              echo "labelling completed..."
+              sleep infinity
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  [
+                    "/bin/sh",
+                    "-c",
+                    "rm -rf /host-opt/kata/share /host-opt/kata/bin",
+                  ]
+          volumeMounts:
+            - name: host-opt-volume
+              mountPath: /host-opt
+            - name: host-usr-volume
+              mountPath: /host-usr
+          securityContext:
+            privileged: true
+      volumes:
+        - name: host-opt-volume
+          hostPath:
+            path: /opt
+        - name: host-usr-volume
+          hostPath:
+            path: /usr
