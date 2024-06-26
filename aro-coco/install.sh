@@ -727,6 +727,9 @@ wait_for_runtimeclass kata-remote || exit 1
 # If UPDATE_KATA_SHIM is true, then update Kata Shim
 if [ "$UPDATE_KATA_SHIM" = true ]; then
     update_kata_shim
+
+    # Wait for sometime before checking for MCP
+    sleep 10
     # If single node OpenShift, then wait for the master MCP to be ready
     # Else wait for kata-oc MCP to be ready
     if is_single_node_ocp; then
