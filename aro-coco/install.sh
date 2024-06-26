@@ -15,6 +15,7 @@ OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
+CREATE_ARO_CLUSTER=true
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -476,6 +477,7 @@ function display_help() {
     echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
     echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
     echo "  -b Use non-ga operator bundles"
+    echo "  -o Only deploy OSC operator"
     echo "  -d Delete ARO cluster"
 }
 
@@ -547,7 +549,7 @@ function print_env_vars() {
     echo "KUBECONFIG_FILE: $KUBECONFIG_FILE"
 }
 
-while getopts "hmsbd" opt; do
+while getopts "hmsbdo" opt; do
     case $opt in
     h)
         display_help
@@ -572,6 +574,11 @@ while getopts "hmsbd" opt; do
         delete_aro_cluster "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME"
         exit 0
         ;;
+    o)
+        echo "Instally OSC operator only"
+        CREATE_ARO_CLUSTER=false
+        ;;
+
     \?)
         echo "Invalid option: -$OPTARG" >&2
         display_help
@@ -589,42 +596,45 @@ check_oc
 # Check if az command is available
 check_az
 
-# Register the MS providers for ARO
-register_provders
+if [ "$CREATE_ARO_CLUSTER" = true ]; then
+    echo "Creating ARO cluster"
 
-# Create resource group for ARO
-create_resource_group "$AZURE_RESOURCE_GROUP" "$AZURE_REGION"
+    # Register the MS providers for ARO
+    register_provders
 
-if ! check_aro_cluster_exists "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME"; then
+    # Create resource group for ARO
+    create_resource_group "$AZURE_RESOURCE_GROUP" "$AZURE_REGION"
 
-    echo "Creating ARO cluster $ARO_CLUSTER_NAME in resource group $AZURE_RESOURCE_GROUP"
-    # Create virtual network for ARO
-    create_virtual_network "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_VNET_CIDR"
+    if ! check_aro_cluster_exists "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME"; then
 
-    # Create master subnet for ARO
-    create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_MASTER_SUBNET" "$ARO_MASTER_SUBNET_CIDR"
+        echo "Creating ARO cluster $ARO_CLUSTER_NAME in resource group $AZURE_RESOURCE_GROUP"
+        # Create virtual network for ARO
+        create_virtual_network "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_VNET_CIDR"
 
-    # Create worker subnet for ARO
-    create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_WORKER_SUBNET" "$ARO_WORKER_SUBNET_CIDR"
+        # Create master subnet for ARO
+        create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_MASTER_SUBNET" "$ARO_MASTER_SUBNET_CIDR"
 
-    # Create ARO cluster
-    create_aro_cluster "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME" \
-        "$ARO_VNET" "$ARO_MASTER_SUBNET" "$ARO_WORKER_SUBNET" "$OCP_PULL_SECRET_LOCATION" "$ARO_VERSION"
-else
-    echo "ARO cluster $ARO_CLUSTER_NAME already exists in resource group $AZURE_RESOURCE_GROUP"
+        # Create worker subnet for ARO
+        create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_WORKER_SUBNET" "$ARO_WORKER_SUBNET_CIDR"
+
+        # Create ARO cluster
+        create_aro_cluster "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME" \
+            "$ARO_VNET" "$ARO_MASTER_SUBNET" "$ARO_WORKER_SUBNET" "$OCP_PULL_SECRET_LOCATION" "$ARO_VERSION"
+        # The above command is synchronous and will wait till ARO cluster is ready
+    else
+        echo "ARO cluster $ARO_CLUSTER_NAME already exists in resource group $AZURE_RESOURCE_GROUP"
+    fi
+
+    # Download the kubeconfig for the ARO cluster
+    KUBECONFIG_FILE=${ARO_CLUSTER_NAME}-kubeconfig
+    download_kubeconfig "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME" "$KUBECONFIG_FILE"
+
+    # Set the KUBECONFIG environment variable
+    export KUBECONFIG=$KUBECONFIG_FILE
 fi
 
-# The above command is synchronous and will wait till ARO cluster is ready
-
-# Download the kubeconfig for the ARO cluster
-KUBECONFIG_FILE=${ARO_CLUSTER_NAME}-kubeconfig
-download_kubeconfig "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME" "$KUBECONFIG_FILE"
-
-# Set the KUBECONFIG environment variable
-export KUBECONFIG=$KUBECONFIG_FILE
-
 # Display the cluster information
-oc cluster-info
+oc cluster-info || exit 1
 
 # If MIRRORING is true, then create the image mirroring config
 if [ "$MIRRORING" = true ]; then
