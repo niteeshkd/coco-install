@@ -407,13 +407,13 @@ function build_peer_pods_cm {
     oc create configmap peer-pods-cm -n openshift-sandboxed-containers-operator \
         --from-literal=CLOUD_PROVIDER="azure" \
         --from-literal=VXLAN_PORT="9000" \
-        --from-literal=AZURE_INSTANCE_SIZE="Standard_D2as_v5" \
+        --from-literal=AZURE_INSTANCE_SIZE="Standard_DC2as_v5" \
         --from-literal=AZURE_RESOURCE_GROUP="${ARO_RESOURCE_GROUP}" \
         --from-literal=AZURE_REGION="${AZURE_REGION}" \
         --from-literal=AZURE_SUBNET_ID="${ARO_WORKER_SUBNET_ID}" \
         --from-literal=AZURE_NSG_ID="${ARO_NSG_ID}" \
-        --from-literal=DISABLECVM="true" \
-        --from-literal=AZURE_IMAGE_ID="" \
+        --from-literal=DISABLECVM="false" \
+        --from-literal=AZURE_IMAGE_ID="****" \
         --from-literal=PROXY_TIMEOUT="5m" || exit 1
 
     echo "peer-pods-cm ConfigMap created successfully"
