@@ -481,6 +481,7 @@ function display_help() {
     echo "  -o Only deploy OSC operator"
     echo "  -d Delete ARO cluster"
     echo "  -k Updating Kata shim"
+    echo "  -u Uninstall the installed artifacts. Doesn't delete the cluster"
     # Add some example usage options
     echo " "
     echo "Example usage:"
@@ -570,6 +571,84 @@ function update_kata_shim() {
     echo "Kata Shim is updated successfully"
 }
 
+# Function to uninstall the installed artifacts
+# It won't delete the cluster
+function uninstall() {
+
+    echo "Uninstalling all the artifacts"
+
+    # Delete the daemonset if it exists
+    oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete ds kata-shim -n openshift-sandboxed-containers-operator || exit 1
+    fi
+
+    # Delete kataconfig cluster-kataconfig if it exists
+    oc get kataconfig cluster-kataconfig &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete kataconfig cluster-kataconfig || exit 1
+    fi
+
+    # Delete the MachineConfig 60-worker-kata-config if it exists
+    oc get mc 60-worker-kata-config &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete mc 60-worker-kata-config || exit 1
+    fi
+
+    # Delete peer-pods-cm and peer-pods-secret if it exists
+    oc get cm peer-pods-cm -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete cm peer-pods-cm -n openshift-sandboxed-containers-operator || exit 1
+    fi
+
+    oc get secret peer-pods-secret -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete secret peer-pods-secret -n openshift-sandboxed-containers-operator || exit 1
+    fi
+
+    # Delete osc-upstream-catalog CatalogSource if it exists
+    oc get catalogsource osc-upstream-catalog -n openshift-marketplace &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete catalogsource osc-upstream-catalog -n openshift-marketplace || exit 1
+    fi
+
+    # Delete ImageTagMirrorSet osc-brew-registry-tag if it exists
+    oc get imagetagmirrorset osc-brew-registry-tag &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete imagetagmirrorset osc-brew-registry || exit 1
+    fi
+
+    # Delete ImageDigestMirrorSet osc-brew-registry-digest if it exists
+    oc get imagedigestmirrorset osc-brew-registry-digest &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete imagedigestmirrorset osc-brew-registry-digest || exit 1
+    fi
+
+    # Delete the namespace openshift-sandboxed-containers-operator if it exists
+    oc get ns openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete ns openshift-sandboxed-containers-operator || exit 1
+    fi
+
+    echo "Waiting for MCP to be READY"
+
+    # Wait for sometime before checking for MCP
+    sleep 10
+    wait_for_mcp master || exit 1
+    wait_for_mcp worker || exit 1
+
+    echo "Uninstall completed successfully"
+}
+
 # Function to print all the env variables
 function print_env_vars() {
     echo "AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP"
@@ -589,7 +668,7 @@ function print_env_vars() {
     echo "KUBECONFIG_FILE: $KUBECONFIG_FILE"
 }
 
-while getopts "hmsbdok" opt; do
+while getopts "hmsbdoku" opt; do
     case $opt in
     h)
         display_help
@@ -621,6 +700,11 @@ while getopts "hmsbdok" opt; do
     k)
         echo "Updating Kata Shim"
         UPDATE_KATA_SHIM=true
+        ;;
+    u)
+        echo "Uninstalling"
+        uninstall
+        exit 0
         ;;
 
     \?)
