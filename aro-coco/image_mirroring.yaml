@@ -1,7 +1,7 @@
 apiVersion: config.openshift.io/v1
 kind: ImageTagMirrorSet
 metadata:
-  name: osc-brew-registry
+  name: osc-brew-registry-tag
 spec:
   imageTagMirrors:
     - mirrors:
@@ -29,7 +29,7 @@ spec:
 apiVersion: config.openshift.io/v1
 kind: ImageDigestMirrorSet
 metadata:
-  name: kata-brew-registry
+  name: osc-brew-registry-digest
 spec:
   imageDigestMirrors:
     - mirrors:
