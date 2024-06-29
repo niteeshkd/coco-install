@@ -622,7 +622,7 @@ function uninstall() {
     oc get imagetagmirrorset osc-brew-registry-tag &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete imagetagmirrorset osc-brew-registry || exit 1
+        oc delete imagetagmirrorset osc-brew-registry-tag || exit 1
     fi
 
     # Delete ImageDigestMirrorSet osc-brew-registry-digest if it exists
