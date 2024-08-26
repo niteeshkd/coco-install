@@ -28,25 +28,25 @@
 - The pre-GA build images are in an authenticated registry, so you'll need to
   set the `PULL_SECRET_JSON` variable with the registry credentials. Following is an example:
 
-  ```sh
-  set +o history
-  REGISTRY_USER="REPLACE_ME"
-  REGISTRY_PASSWORD="REPLACE_ME"
+```sh
+set +o history
+REGISTRY_USER="REPLACE_ME"
+REGISTRY_PASSWORD="REPLACE_ME"
 
-  # Combine credentials and encode in base64
-  REGISTRY_AUTH_B64=$(echo -n "${REGISTRY_USER}:${REGISTRY_PASSWORD}" | base64)
+# Combine credentials and encode in base64
+REGISTRY_AUTH_B64=$(echo -n "${REGISTRY_USER}:${REGISTRY_PASSWORD}" | base64)
 
-  # Create the JSON string using the encoded credentials
-  export PULL_SECRET_JSON=$(cat <<EOF
-  {
-    "brew.registry.redhat.io": {"auth": "${REGISTRY_AUTH_B64}"},
-    "registry.redhat.io": {"auth": "${REGISTRY_AUTH_B64}"}
-  }
+# Create the JSON string using the encoded credentials
+export PULL_SECRET_JSON=$(cat <<EOF
+{
+  "brew.registry.redhat.io": {"auth": "${REGISTRY_AUTH_B64}"},
+  "registry.redhat.io": {"auth": "${REGISTRY_AUTH_B64}"}
+}
 EOF
-  )
-  set -o history
+)
+set -o history
 
-  ```
+```
 
 - Kickstart the installation by running the following:
 
