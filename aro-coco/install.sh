@@ -611,6 +611,12 @@ function uninstall() {
         oc delete secret peer-pods-secret -n openshift-sandboxed-containers-operator || exit 1
     fi
 
+    oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete cm osc-feature-gates -n openshift-sandboxed-containers-operator || exit 1
+    fi
+
     # Delete osc-upstream-catalog CatalogSource if it exists
     oc get catalogsource osc-upstream-catalog -n openshift-marketplace &>/dev/null
     return_code=$?
@@ -809,6 +815,10 @@ build_peer_pods_cm
 
 # Create ssh key secret
 create_ssh_key_secret
+
+# Create CoCo feature gate ConfigMap
+
+oc apply -f osc-fg-cm.yaml || exit 1
 
 # Create Kataconfig
 oc apply -f kataconfig.yaml || exit 1
