@@ -413,7 +413,7 @@ function build_peer_pods_cm {
         --from-literal=AZURE_SUBNET_ID="${ARO_WORKER_SUBNET_ID}" \
         --from-literal=AZURE_NSG_ID="${ARO_NSG_ID}" \
         --from-literal=DISABLECVM="false" \
-        --from-literal=AZURE_IMAGE_ID="****" \
+        --from-literal=AZURE_IMAGE_ID="" \
         --from-literal=PROXY_TIMEOUT="5m" || exit 1
 
     echo "peer-pods-cm ConfigMap created successfully"
