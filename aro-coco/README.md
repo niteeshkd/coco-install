@@ -55,3 +55,11 @@ set -o history
   ```
 
   This will deploy ARO and install the pre-GA release of OSC operator.
+
+  If you want to also deploy custom kata shim then use the following command:
+  ```sh
+  ./install.sh -m -s -b -k
+   ```
+
+  This will deploy ARO, install the pre-GA release of OSC operator and latest kata shim
+  using the daemonset
