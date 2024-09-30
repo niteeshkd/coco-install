@@ -7,6 +7,6 @@ spec:
   channel: stable
   installPlanApproval: Automatic
   name: sandboxed-containers-operator
-  source: my-operator-catalog
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
   startingCSV: sandboxed-containers-operator.v1.7.0

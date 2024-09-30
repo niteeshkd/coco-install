@@ -10,8 +10,16 @@ At least one bare-metal worker node with `coco: true` label is needed.
 
 - Kickstart the installation by running the following:
 
+  For TDX hosts:
+
   ```sh
-  ./install.sh
+  ./install.sh -t tdx
+  ```
+
+  For SNP hosts:
+
+  ```sh
+  ./install.sh -t snp
   ```
 
   This will install the OSC operator and configure Kata with CoCo support on the bare-metal worker node.
@@ -36,11 +44,9 @@ At least one bare-metal worker node with `coco: true` label is needed.
 - Kickstart the installation by running the following:
 
   ```sh
-  ./install.sh -m -s -b
+  ./install.sh -t tdx -m -s -b
   ```
 
-  This will deploy the pre-GA release of OSC operator.
+  This will deploy the pre-GA release of OSC operator on TDX hosts.
 
-After successful install `kata`, `kata-cc-sim`, `kata-cc-tdx` and `kata-cc-snp` runtimeclasses will be created
-
-If you are using a non TEE hardware, then use the `kata-cc-sim` runtimeclass to play with the CoCo workflow
+After successful install `kata`, `kata-tdx` or `kata-snp` runtimeclasses will be created

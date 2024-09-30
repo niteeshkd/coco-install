@@ -1,25 +1,24 @@
 #!/bin/bash
 
+# Defaults
+OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
-TDX=false
-SNP=false
-TDX_RHCOS_IMAGE=${TDX_RHCOS_IMAGE:-"quay.io/openshift_sandboxed_containers/kata-ocp416:tdx"}
-SNP_RHCOS_IMAGE=${SNP_RHCOS_IMAGE:-"quay.io/openshift_sandboxed_containers/kata-ocp416:snp"}
-
-# Function to check if the jq command is available
-function check_jq() {
-    if ! command -v jq &>/dev/null; then
-        echo "jq command not found. Please install the jq CLI tool."
-        exit 1
-    fi
-}
+UPDATE_KATA_SHIM=false
 
 # Function to check if the oc command is available
 function check_oc() {
     if ! command -v oc &>/dev/null; then
         echo "oc command not found. Please install the oc CLI tool."
+        exit 1
+    fi
+}
+
+# Function to check if the jq command is available
+function check_jq() {
+    if ! command -v jq &>/dev/null; then
+        echo "jq command not found. Please install the jq CLI tool."
         exit 1
     fi
 }
@@ -185,81 +184,124 @@ function add_image_pull_secret() {
 
 }
 
-# Function to create runtimeClasses
+# Function to create runtimeClass based on TEE type and
+# SNO or regular OCP
+# Generic template
+#apiVersion: node.k8s.io/v1
+#handler: kata-$TEE_TYPE
+#kind: RuntimeClass
+#metadata:
+#  name: kata-$TEE_TYPE
+#scheduling:
+#  nodeSelector:
+#    $label
 function create_runtimeclasses() {
-    # Variable to hold generic template for runtimeclass.
-    # The `name` and `handler` fields will be updated based on the runtimeclass being created
-    local runtimeclass_template='{
-        "apiVersion": "node.k8s.io/v1",
-        "kind": "RuntimeClass",
-        "metadata": {
-            "name": ""
-        },
-        "handler": "",
-        "overhead": {
-            "podFixed": {
-                "cpu": "250m",
-                "memory": "350Mi"
-            }
-        },
-        "scheduling": {
-            "nodeSelector": {
-                "node-role.kubernetes.io/kata-oc": ""
-            }
-        }
-    }'
+    local tee_type=${1}
+    local label='node-role.kubernetes.io/kata-oc: ""'
 
-    # Create kata-cc-tdx runtimeclass if TDX is set
-    if [ "$TDX" = true ]; then
-        local tdx_runtimeclass
-        tdx_runtimeclass=$(echo "$runtimeclass_template" | jq '.metadata.name = "kata-cc-tdx" | .handler = "kata-cc-tdx"')
-        oc apply -f <(echo "$tdx_runtimeclass") || exit 1
-    elif [ "$SNP" = true ]; then
-        # Create kata-cc-snp runtimeclass if SNP is set
-        local snp_runtimeclass
-        snp_runtimeclass=$(echo "$runtimeclass_template" | jq '.metadata.name = "kata-cc-snp" | .handler = "kata-cc-snp"')
-        oc apply -f <(echo "$snp_runtimeclass") || exit 1
+    if is_single_node_ocp; then
+        label='node-role.kubernetes.io/master: ""'
+    fi
+
+    # Use the label variable here, e.g., create RuntimeClass objects
+    oc apply -f - <<EOF
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata-$tee_type
+handler: kata-$tee_type
+scheduling:
+  nodeSelector:
+    $label
+EOF
+}
+
+function display_help() {
+    echo "Usage: install.sh -t <tee_type> [-h] [-m] [-s] [-b] [-k] [-u]"
+    echo "Options:"
+    echo "  -t <tee_type> Specify the TEE type (tdx or snp)"
+    echo "  -h Display help"
+    echo "  -m Install the image mirroring config"
+    echo "  -s Set additional cluster-wide image pull secret."
+    echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
+    echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
+    echo "  -b Use pre-ga operator bundles"
+    echo "  -k Updating Kata shim"
+    echo "  -u Uninstall the installed artifacts"
+    # Add some example usage options
+    echo " "
+    echo "Example usage:"
+    echo "# Install the GA operator"
+    echo " ./install.sh "
+    echo " "
+    echo "# Install the GA operator with image mirroring"
+    echo " ./install.sh -m"
+    echo " "
+    echo "# Install the GA operator with additional cluster-wide image pull secret"
+    echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
+    echo " ./install.sh -s"
+    echo " "
+    echo "# Install the pre-GA operator with image mirroring and additional cluster-wide image pull secret"
+    echo " ./install.sh -m -s -b"
+    echo " "
+    echo "# Deploy the pre-GA OSC operator with image mirroring and additional cluster-wide image pull secret"
+    echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
+    echo " ./install.sh -m -s -b"
+    echo " "
+}
+
+# Function to verify all required variables are set and
+# required files exist
+
+function verify_params() {
+
+    # Check if TEE_TYPE is provided
+    if [ -z "$TEE_TYPE" ]; then
+        echo "Error: TEE type (-t) is mandatory"
+        display_help
+        exit 1
+    fi
+
+    # Verify TEE_TYPE is valid
+    if [ "$TEE_TYPE" != "tdx" ] && [ "$TEE_TYPE" != "snp" ]; then
+        echo "Error: Invalid TEE type. It must be 'tdx' or 'snp'"
+        display_help
+        exit 1
+    fi
+
+    # Check if the required environment variables are set
+    if [ -z "$OCP_PULL_SECRET_LOCATION" ]; then
+        echo "One or more required environment variables are not set"
+        exit 1
+    fi
+
+    # Check if the pull secret file exists
+    if [ ! -f "$OCP_PULL_SECRET_LOCATION" ]; then
+        echo "Pull secret file $OCP_PULL_SECRET_LOCATION doesn't exist"
+        exit 1
+    fi
+
+    # If ADD_IMAGE_PULL_SECRET is true,  then check if PULL_SECRET_JSON is set
+    if [ "$ADD_IMAGE_PULL_SECRET" = true ] && [ -z "$PULL_SECRET_JSON" ]; then
+        echo "ADD_IMAGE_PULL_SECRET is set but required environment variable: PULL_SECRET_JSON is not set"
+        exit 1
     fi
 
 }
 
-# Function to create Layered Image Deployment ConfigMap
-function create_layered_image_deployment_configmap() {
-    # Variable to hold generic template for Layered Image Deployment ConfigMap
-    # The `name` and `handler` fields will be updated based on the runtimeclass being created
-    local layered_image_deployment_configmap_template='{
-        "apiVersion": "v1",
-        "kind": "ConfigMap",
-        "metadata": {
-            "name": "layered-image-deploy-cm",
-            "namespace": "openshift-sandboxed-containers-operator"
-        },
-        "data": {
-            "osImageURL": "",
-            "kernelArguments": ""
-        }
-    }'
+# Function to update Kata Shim
+function update_kata_shim() {
 
-    # Create Layered Image Deployment ConfigMap for TDX
-    # osImageURL: $TDX_RHCOS_IMAGE or $SNP_RHCOS_IMAGE
-    # kernelArguments: "kvm_intel.tdx=1"
-    if [ "$TDX" = true ]; then
-        local tdx_layered_image_deployment_configmap
-        tdx_layered_image_deployment_configmap=$(echo "$layered_image_deployment_configmap_template" |
-            jq '.data.osImageURL = "$TDX_RHCOS_IMAGE" | .data.kernelArguments = "kvm_intel.tdx=1"')
-        oc apply -f <(echo "$tdx_layered_image_deployment_configmap") || exit 1
-    elif [ "$SNP" = true ]; then
-        # Create Layered Image Deployment ConfigMap for SNP
-        #  osImageURL: "quay.io/bpradipt/coco:ocp415"
-        # kernelArguments: "kvm_intel.snp=1"
-        local snp_layered_image_deployment_configmap
-        snp_layered_image_deployment_configmap=$(echo "$layered_image_deployment_configmap_template" |
-            jq '.data.osImageURL = "$SNP_RHCOS_IMAGE" | .data.kernelArguments = ""')
-        oc apply -f <(echo "$snp_layered_image_deployment_configmap") || exit 1
-    fi
+    # Install daemonset for kata-shim
+    oc apply -f kata-shim-ds.yaml || exit 1
 
-    echo "Layered Image Deployment ConfigMap created successfully"
+    # Check if the daemonset is ready
+    oc wait --for=jsonpath='{.status.numberReady}'=1 ds/kata-shim -n openshift-sandboxed-containers-operator --timeout=300s || exit 1
 
+    # Apply the MachineConfig to update the associated crio config
+    oc apply -f mc-60-kata-config.yaml || exit 1
+
+    echo "Kata Shim is updated successfully"
 }
 
 # Function to uninstall the installed artifacts
@@ -268,11 +310,31 @@ function uninstall() {
 
     echo "Uninstalling all the artifacts"
 
+    # Delete the daemonset if it exists
+    oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete ds kata-shim -n openshift-sandboxed-containers-operator || exit 1
+    fi
+
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
         oc delete kataconfig cluster-kataconfig || exit 1
+    fi
+
+    # Delete the MachineConfig 60-worker-kata-config if it exists
+    oc get mc 60-worker-kata-config &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete mc 60-worker-kata-config || exit 1
+    fi
+
+    oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        oc delete cm osc-feature-gates -n openshift-sandboxed-containers-operator || exit 1
     fi
 
     # Delete osc-upstream-catalog CatalogSource if it exists
@@ -313,53 +375,22 @@ function uninstall() {
     echo "Uninstall completed successfully"
 }
 
-# Function to check coco: true label on at least one worker node
-function check_coco_label() {
-    local worker_nodes
-    worker_nodes=$(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[*].metadata.name}')
-    for node in $worker_nodes; do
-        local coco_label
-        coco_label=$(oc get node "$node" -o jsonpath='{.metadata.labels.coco}')
-        if [ "$coco_label" == "true" ]; then
-            return 0
-        fi
-    done
-    echo "No worker node with 'coco: true' label found"
-    exit 1
+# Function to print all the env variables
+function print_env_vars() {
+    echo "OCP_PULL_SECRET_LOCATION: $OCP_PULL_SECRET_LOCATION"
+    echo "ADD_IMAGE_PULL_SECRET: $ADD_IMAGE_PULL_SECRET"
+    echo "GA_RELEASE: $GA_RELEASE"
+    echo "MIRRORING: $MIRRORING"
+    echo "TEE_TYPE: $TEE_TYPE"
 }
 
-function display_help() {
-    echo "Usage: install.sh [-h] [-m] [-s] [-b] [-t] [-u]"
-    echo "Options:"
-    echo "  -h Display help"
-    echo "  -m Install the image mirroring config"
-    echo "  -s Set additional cluster-wide image pull secret."
-    echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
-    echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
-    echo "  -b Use non-ga operator bundles"
-    echo "  -t [tdx|snp]"
-    echo "  -u Uninstall the installed artifacts. Doesn't delete the cluster"
-    # Add some example usage options
-    echo " "
-    echo "Example usage:"
-    echo "# Install the GA operator and setup TDX"
-    echo " ./install.sh -t tdx"
-    echo " "
-    echo "# Install the GA operator with image mirroring and SNP"
-    echo " ./install.sh -m -t snp"
-    echo " "
-    echo "# Install the GA operator with additional cluster-wide image pull secret"
-    echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
-    echo " ./install.sh -s -t tdx"
-    echo " "
-    echo "# Deploy the pre-GA OSC operator with image mirroring and additional cluster-wide image pull secret"
-    echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
-    echo " ./install.sh -m -s -b -t tdx"
-    echo " "
-}
-
-while getopts "hmsbt:u" opt; do
+while getopts "t:hmsbku" opt; do
     case $opt in
+    t)
+        # Convert it to lower case
+        TEE_TYPE=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+        echo "TEE type: $TEE_TYPE"
+        ;;
     h)
         display_help
         exit 0
@@ -378,24 +409,14 @@ while getopts "hmsbt:u" opt; do
         echo "Using non-ga operator bundles"
         GA_RELEASE=false
         ;;
+    k)
+        echo "Updating Kata Shim"
+        UPDATE_KATA_SHIM=true
+        ;;
     u)
         echo "Uninstalling"
         uninstall
         exit 0
-        ;;
-    t)
-        # Check if tdx or snp is passed as argument to -t
-        if [ "$OPTARG" == "tdx" ]; then
-            echo "Setting TDX"
-            TDX=true
-        elif [ "$OPTARG" == "snp" ]; then
-            echo "Setting SNP"
-            SNP=true
-        else
-            echo "Invalid argument passed to -t"
-            display_help
-            exit 1
-        fi
         ;;
 
     \?)
@@ -406,21 +427,14 @@ while getopts "hmsbt:u" opt; do
     esac
 done
 
+# Verify all required parameters are set
+verify_params
+
 # Check if oc command is available
 check_oc
 
-# Check if coco: true label is set on at least one worker node
-check_coco_label
-
-# Exit if neither TDX nor SNP is set
-# Error out if both are set or unset
-if [ "$TDX" = true ] && [ "$SNP" = true ]; then
-    echo "Both TDX and SNP cannot be set at the same time"
-    exit 1
-elif [ "$TDX" = false ] && [ "$SNP" = false ]; then
-    echo "Either TDX or SNP must be set"
-    exit 1
-fi
+# Display the cluster information
+oc cluster-info || exit 1
 
 # If MIRRORING is true, then create the image mirroring config
 if [ "$MIRRORING" = true ]; then
@@ -456,14 +470,20 @@ apply_operator_manifests
 
 wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
 
-# Create the feature gate configmap
-oc apply -f osc-fg-cm.yaml || exit 1
-
-# Create layered image deployment configmap
-create_layered_image_deployment_configmap
-
 # Wait for the service endpoints IP to be available
 wait_for_service_ep_ip webhook-service openshift-sandboxed-containers-operator || exit 1
+
+# Create CoCo feature gate ConfigMap
+oc apply -f osc-fg-cm.yaml || exit 1
+
+# Create Layered Image FG ConfigMap
+if [ "$TEE_TYPE" = "tdx" ]; then
+    oc apply -f layeredimage-cm-tdx.yaml || exit 1
+elif [ "$TEE_TYPE" = "snp" ]; then
+    oc apply -f layeredimage-cm-snp.yaml || exit 1
+else
+    echo "Unsupported TEE_TYPE. It must be tdx or snp" || exit 1
+fi
 
 # Create Kataconfig
 oc apply -f kataconfig.yaml || exit 1
@@ -483,7 +503,26 @@ fi
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
 
-# Create CoCo runtimeclasses
-create_runtimeclasses
+# Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
+create_runtimeclasses "$TEE_TYPE"
+
+# If UPDATE_KATA_SHIM is true, then update Kata Shim
+if [ "$UPDATE_KATA_SHIM" = true ]; then
+    update_kata_shim
+
+    # Wait for sometime before checking for MCP
+    sleep 10
+    # If single node OpenShift, then wait for the master MCP to be ready
+    # Else wait for kata-oc MCP to be ready
+    if is_single_node_ocp; then
+        echo "SNO"
+        wait_for_mcp master || exit 1
+    else
+        wait_for_mcp kata-oc || exit 1
+    fi
+fi
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
+
+# Print all the env variables values
+print_env_vars
