@@ -1,18 +1,19 @@
 # Default variables
 
 REGISTRY_AUTH_FILE := ocp_pull_secret.json
-IMAGE_TDX ?= quay.io/bpradipt/coco:ocp416-tdx
+IMAGE_TDX ?= quay.io/bpradipt/rhcos-layer/ocp-4.16:latest-tdx
+IMAGE_SNP ?= quay.io/bpradipt/rhcos-layer/ocp-4.16:latest-snp
 
 TEE ?= tdx
 
 # Default target
 .PHONY: build
-build: check-podman get-pull-secret get-ocp-release-image ## Default target: Build the RHCOS layer
+build: #check-podman get-pull-secret get-ocp-release-image ## Default target: Build the RHCOS layer
 	@echo "Building RHCOS layer..."
-	@if [ "$(TEE)" == "tdx" ]; then \
+	if [ "$(TEE)" == "tdx" ]; then \
 		podman build --authfile $(REGISTRY_AUTH_FILE) --build-arg OCP_RELEASE_IMAGE=$(shell cat ./.ocp-release-image) -t $(IMAGE_TDX) -f tdx/Containerfile . ;\
-	else \
-		echo "Only tdx TEE image layer creation is supported" ;\
+	else [ "$(TEE)" == "snp" ]; \
+		podman build --authfile $(REGISTRY_AUTH_FILE) --build-arg OCP_RELEASE_IMAGE=$(shell cat ./.ocp-release-image) -t $(IMAGE_SNP) -f snp/Containerfile . ;\
 	fi
 
 # Target to check if 'jq' is available
