@@ -1,8 +1,0 @@
-apiVersion: node.k8s.io/v1
-handler: kata-cc-sim
-kind: RuntimeClass
-metadata:
-  name: kata-cc-sim
-scheduling:
-  nodeSelector:
-    node-role.kubernetes.io/kata-oc: ""
