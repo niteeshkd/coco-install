@@ -22,8 +22,8 @@ RUN curl -LO https://github.com/kata-containers/kata-containers/releases/downloa
 
 COPY snp/crio.conf.d/ /etc/crio/crio.conf.d/
 
-#Install CentOS stream kernel
-RUN rpm-ostree override replace https://mirror.stream.centos.org/SIGs/9-stream/virt/x86_64/tdx-devel/Packages/k/kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-480.el9s.x86_64.rpm
+#Install EL9 6.11 kernel with SEV-SNP support
+RUN rpm-ostree override replace https://elrepo.org/linux/kernel/el9/x86_64/RPMS/kernel-ml-{,core-,modules-,modules-extra-}6.11.1-1.el9.elrepo.x86_64.rpm
  
 
 RUN rpm-ostree cleanup -m && \
