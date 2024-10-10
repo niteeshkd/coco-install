@@ -2,7 +2,7 @@
 
 # Defaults
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-aro-rg-$(shuf -i 1000-9999 -n 1)}"
-AZURE_REGION="${AZURE_REGION:-eastus}"
+AZURE_REGION="${AZURE_REGION:-eastus2}"
 ARO_VNET="${ARO_VNET:-aro-vnet}"
 ARO_VNET_CIDR="${ARO_VNET_CIDR:-10.0.0.0/22}"
 ARO_MASTER_SUBNET="${ARO_MASTER_SUBNET:-master-subnet}"
@@ -10,7 +10,7 @@ ARO_MASTER_SUBNET_CIDR="${ARO_MASTER_SUBNET_CIDR:-10.0.0.0/23}"
 ARO_WORKER_SUBNET="${ARO_WORKER_SUBNET:-worker-subnet}"
 ARO_WORKER_SUBNET_CIDR="${ARO_WORKER_SUBNET_CIDR:-10.0.2.0/23}"
 ARO_CLUSTER_NAME="${ARO_CLUSTER_NAME:-aro-cluster}"
-ARO_VERSION="${ARO_VERSION:-4.14.16}"
+ARO_VERSION="${ARO_VERSION:-4.15.27}"
 OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
@@ -387,6 +387,7 @@ function build_peer_pods_cm {
     # CLOUD_PROVIDER: "azure"
     # VXLAN_PORT: "9000"
     # AZURE_INSTANCE_SIZE: "Standard_DC2as_v5"
+    # AZURE_INSTANCE_SIZES: "Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5"
     # AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
     # AZURE_REGION: "${AZURE_REGION}"
     # AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
@@ -408,6 +409,7 @@ function build_peer_pods_cm {
         --from-literal=CLOUD_PROVIDER="azure" \
         --from-literal=VXLAN_PORT="9000" \
         --from-literal=AZURE_INSTANCE_SIZE="Standard_DC2as_v5" \
+	--from-literal=AZURE_INSTANCE_SIZES="Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5" \
         --from-literal=AZURE_RESOURCE_GROUP="${ARO_RESOURCE_GROUP}" \
         --from-literal=AZURE_REGION="${AZURE_REGION}" \
         --from-literal=AZURE_SUBNET_ID="${ARO_WORKER_SUBNET_ID}" \
