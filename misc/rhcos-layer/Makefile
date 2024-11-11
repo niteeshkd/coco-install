@@ -8,11 +8,11 @@ TEE ?= tdx
 
 # Default target
 .PHONY: build
-build: #check-podman get-pull-secret get-ocp-release-image ## Default target: Build the RHCOS layer
+build: check-podman get-pull-secret get-ocp-release-image ## Default target: Build the RHCOS layer
 	@echo "Building RHCOS layer..."
-	if [ "$(TEE)" == "tdx" ]; then \
+	if [ "$(TEE)" = "tdx" ]; then \
 		podman build --authfile $(REGISTRY_AUTH_FILE) --build-arg OCP_RELEASE_IMAGE=$(shell cat ./.ocp-release-image) -t $(IMAGE_TDX) -f tdx/Containerfile . ;\
-	else [ "$(TEE)" == "snp" ]; \
+	else [ "$(TEE)" = "snp" ]; \
 		podman build --authfile $(REGISTRY_AUTH_FILE) --build-arg OCP_RELEASE_IMAGE=$(shell cat ./.ocp-release-image) -t $(IMAGE_SNP) -f snp/Containerfile . ;\
 	fi
 
