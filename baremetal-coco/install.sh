@@ -209,6 +209,16 @@ function create_intel_node_feature_rules() {
     echo "Node Feature Discovery operator | node feature rules successfully created"
 }
 
+function deploy_intel_device_plugins() {
+    echo "Intel Device Plugins operator | starting the deployment" 
+
+    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/install_operator.yaml || return 1
+    wait_for_deployment inteldeviceplugins-controller-manager openshift-operators || return 1
+    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/sgx_device_plugin.yaml || return 1
+
+    echo "Intel Device Plugins operator | deployment finished successfully" 
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -585,6 +595,7 @@ deploy_node_feature_discovery || exit 1
 case $TEE_TYPE in
     tdx)
         create_intel_node_feature_rules || exit 1
+        deploy_intel_device_plugins || exit 1
         ;;
 esac
 
