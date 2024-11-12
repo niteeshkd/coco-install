@@ -228,6 +228,34 @@ function create_runtimeclasses() {
         label='node-role.kubernetes.io/master: ""'
     fi
 
+    case $tee_type in
+        tdx)
+            echo "kata-tdx | creating runtime class"
+
+            oc apply -f - <<EOF
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata-tdx
+handler: kata-tdx
+overhead:
+  podFixed:
+    memory: "350Mi"
+    cpu: "250m"
+    tdx.intel.com/keys: 1
+scheduling:
+  nodeSelector:
+     intel.feature.node.kubernetes.io/tdx: "true"
+     $label
+EOF
+            result=$?
+            [ $result -eq 0 ] || return 1
+
+            echo "kata-tdx | runtime class successfully created"
+            return 0
+            ;;
+    esac
+
     # Use the label variable here, e.g., create RuntimeClass objects
     oc apply -f - <<EOF
 apiVersion: node.k8s.io/v1
