@@ -199,6 +199,16 @@ function deploy_node_feature_discovery() {
     echo "Node Feature Discovery operator | deployment finished successfully"
 }
 
+function create_intel_node_feature_rules() {
+    echo "Node Feature Discovery operator | creating node feature rules"
+
+    pushd nfd
+        oc apply -f intel-rules.yaml || return 1
+    popd
+
+    echo "Node Feature Discovery operator | node feature rules successfully created"
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -320,10 +330,18 @@ function update_kata_shim() {
 }
 
 function uninstall_node_feature_discovery() {
+    tee_type="${1:-}"
+
     oc get deployment nfd-controller-manager -n openshift-nfd &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
         pushd nfd
+            case $tee_type in
+                tdx)
+                    oc delete -f intel-rules.yaml || return 1
+                    ;;
+            esac
+
             oc delete -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1 
             oc delete -f subs.yaml || return 1
             oc delete -f og.yaml || return 1
@@ -335,11 +353,10 @@ function uninstall_node_feature_discovery() {
 # Function to uninstall the installed artifacts
 # It won't delete the cluster
 function uninstall() {
-
     echo "Uninstalling all the artifacts"
 
     # Uninstall NFD
-    uninstall_node_feature_discovery || exit 1
+    uninstall_node_feature_discovery $TEE_TYPE|| exit 1
 
     # Delete the daemonset if it exists
     oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
@@ -416,6 +433,7 @@ function print_env_vars() {
 }
 
 while getopts "t:hmsbku" opt; do
+    do_uninstall=false
     case $opt in
     t)
         # Convert it to lower case
@@ -535,6 +553,12 @@ fi
 wait_for_runtimeclass kata || exit 1
 
 deploy_node_feature_discovery || exit 1
+
+case $TEE_TYPE in
+    tdx)
+        create_intel_node_feature_rules || exit 1
+        ;;
+esac
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
