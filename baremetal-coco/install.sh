@@ -184,6 +184,21 @@ function add_image_pull_secret() {
 
 }
 
+# Function to deploy NodeFeatureDiscovery (NFD)
+function deploy_node_feature_discovery() {
+    echo "Node Feature Discovery operator | starting the deployment"
+
+    pushd nfd
+        oc apply -f ns.yaml || return 1
+        oc apply -f og.yaml || return 1
+        oc apply -f subs.yaml || return 1
+        oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1 
+    popd
+
+    wait_for_deployment nfd-controller-manager openshift-nfd || return 1
+    echo "Node Feature Discovery operator | deployment finished successfully"
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -304,11 +319,27 @@ function update_kata_shim() {
     echo "Kata Shim is updated successfully"
 }
 
+function uninstall_node_feature_discovery() {
+    oc get deployment nfd-controller-manager -n openshift-nfd &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        pushd nfd
+            oc delete -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1 
+            oc delete -f subs.yaml || return 1
+            oc delete -f og.yaml || return 1
+            oc delete -f ns.yaml || return 1
+        popd
+    fi
+}
+
 # Function to uninstall the installed artifacts
 # It won't delete the cluster
 function uninstall() {
 
     echo "Uninstalling all the artifacts"
+
+    # Uninstall NFD
+    uninstall_node_feature_discovery || exit 1
 
     # Delete the daemonset if it exists
     oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
@@ -502,6 +533,8 @@ fi
 
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
+
+deploy_node_feature_discovery || exit 1
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
