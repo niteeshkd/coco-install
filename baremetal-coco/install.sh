@@ -184,6 +184,41 @@ function add_image_pull_secret() {
 
 }
 
+# Function to deploy NodeFeatureDiscovery (NFD)
+function deploy_node_feature_discovery() {
+    echo "Node Feature Discovery operator | starting the deployment"
+
+    pushd nfd
+        oc apply -f ns.yaml || return 1
+        oc apply -f og.yaml || return 1
+        oc apply -f subs.yaml || return 1
+        oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1 
+    popd
+
+    wait_for_deployment nfd-controller-manager openshift-nfd || return 1
+    echo "Node Feature Discovery operator | deployment finished successfully"
+}
+
+function create_intel_node_feature_rules() {
+    echo "Node Feature Discovery operator | creating node feature rules"
+
+    pushd nfd
+        oc apply -f intel-rules.yaml || return 1
+    popd
+
+    echo "Node Feature Discovery operator | node feature rules successfully created"
+}
+
+function deploy_intel_device_plugins() {
+    echo "Intel Device Plugins operator | starting the deployment" 
+
+    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/install_operator.yaml || return 1
+    wait_for_deployment inteldeviceplugins-controller-manager openshift-operators || return 1
+    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/sgx_device_plugin.yaml || return 1
+
+    echo "Intel Device Plugins operator | deployment finished successfully" 
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -202,6 +237,34 @@ function create_runtimeclasses() {
     if is_single_node_ocp; then
         label='node-role.kubernetes.io/master: ""'
     fi
+
+    case $tee_type in
+        tdx)
+            echo "kata-tdx | creating runtime class"
+
+            oc apply -f - <<EOF
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: kata-tdx
+handler: kata-tdx
+overhead:
+  podFixed:
+    memory: "350Mi"
+    cpu: "250m"
+    tdx.intel.com/keys: 1
+scheduling:
+  nodeSelector:
+     intel.feature.node.kubernetes.io/tdx: "true"
+     $label
+EOF
+            result=$?
+            [ $result -eq 0 ] || return 1
+
+            echo "kata-tdx | runtime class successfully created"
+            return 0
+            ;;
+    esac
 
     # Use the label variable here, e.g., create RuntimeClass objects
     oc apply -f - <<EOF
@@ -304,11 +367,34 @@ function update_kata_shim() {
     echo "Kata Shim is updated successfully"
 }
 
+function uninstall_node_feature_discovery() {
+    tee_type="${1:-}"
+
+    oc get deployment nfd-controller-manager -n openshift-nfd &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        pushd nfd
+            case $tee_type in
+                tdx)
+                    oc delete -f intel-rules.yaml || return 1
+                    ;;
+            esac
+
+            oc delete -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1 
+            oc delete -f subs.yaml || return 1
+            oc delete -f og.yaml || return 1
+            oc delete -f ns.yaml || return 1
+        popd
+    fi
+}
+
 # Function to uninstall the installed artifacts
 # It won't delete the cluster
 function uninstall() {
-
     echo "Uninstalling all the artifacts"
+
+    # Uninstall NFD
+    uninstall_node_feature_discovery $TEE_TYPE|| exit 1
 
     # Delete the daemonset if it exists
     oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
@@ -385,6 +471,7 @@ function print_env_vars() {
 }
 
 while getopts "t:hmsbku" opt; do
+    do_uninstall=false
     case $opt in
     t)
         # Convert it to lower case
@@ -502,6 +589,15 @@ fi
 
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
+
+deploy_node_feature_discovery || exit 1
+
+case $TEE_TYPE in
+    tdx)
+        create_intel_node_feature_rules || exit 1
+        deploy_intel_device_plugins || exit 1
+        ;;
+esac
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
