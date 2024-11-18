@@ -184,6 +184,20 @@ function add_image_pull_secret() {
 
 }
 
+#Function to deploy the OpenShift sandboxed containers (OSC) operator
+function deploy_osc_operator() {
+    echo "OpenShift sandboxed containers operator | starting the deployment"
+    # Apply the operator manifests
+    apply_operator_manifests
+
+    wait_for_deployment controller-manager openshift-sandboxed-containers-operator || return 1
+
+    # Wait for the service endpoints IP to be available
+    wait_for_service_ep_ip webhook-service openshift-sandboxed-containers-operator || return 1
+
+    echo "OpenShift sandboxed containers operator | deployment finished successfully"
+}
+
 # Function to deploy NodeFeatureDiscovery (NFD) operator
 function deploy_nfd_operator() {
     echo "Node Feature Discovery operator | starting the deployment"
@@ -562,13 +576,7 @@ tdx)
     ;;
 esac
 
-# Apply the operator manifests
-apply_operator_manifests
-
-wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
-
-# Wait for the service endpoints IP to be available
-wait_for_service_ep_ip webhook-service openshift-sandboxed-containers-operator || exit 1
+deploy_osc_operator || exit 1
 
 # Create CoCo feature gate ConfigMap
 oc apply -f osc-fg-cm.yaml || exit 1
