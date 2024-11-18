@@ -304,10 +304,10 @@ function set_aa_kbc_params_for_kata_agent() {
 
     case $tee_type in
     tdx)
-        filepath=/etc/kata-containers/tdx/96-kata-kernel-config
+        filepath=/etc/kata-containers/tdx/config.d/96-kata-kernel-config
         ;;
     snp)
-        filepath=/opt/kata/share/defaults/kata-containers/96-kata-kernel-config
+        filepath=/etc/kata-containers/snp/config.d/96-kata-kernel-config
         ;;
     esac
 
@@ -486,6 +486,10 @@ function uninstall() {
 
     # Uninstall NFD
     uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
+
+    # Delete the MachineConfig 96-kata-kernel-config
+    oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
+    rm -f ./96-kata-kernel-config-mc.yaml
 
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
