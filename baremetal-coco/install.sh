@@ -6,6 +6,7 @@ MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
 UPDATE_KATA_SHIM=false
+SKIP_NFD=false
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -344,6 +345,10 @@ function display_help() {
     echo "  -b Use pre-ga operator bundles"
     echo "  -k Updating Kata shim"
     echo "  -u Uninstall the installed artifacts"
+    echo " "
+    echo "Some environment variables that can be set:"
+    echo "  OCP_PULL_SECRET_LOCATION: Location of the pull secret file (default: $HOME/pull-secret.json)"
+    echo "  SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
     # Add some example usage options
     echo " "
     echo "Example usage:"
@@ -524,6 +529,8 @@ function print_env_vars() {
     echo "GA_RELEASE: $GA_RELEASE"
     echo "MIRRORING: $MIRRORING"
     echo "TEE_TYPE: $TEE_TYPE"
+    echo "SKIP_NFD: $SKIP_NFD"
+
 }
 
 while getopts "t:hmsbku" opt; do
@@ -607,20 +614,23 @@ if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
 
 fi
 
-deploy_nfd_operator || exit 1
+# Deploy NFD operator and create NFD CR if SKIP_NFD is false
+if [ "$SKIP_NFD" = false ]; then
+    deploy_nfd_operator || exit 1
 
-# Create NFD CR
-oc apply -f nfd/nfd-cr.yaml || exit 1
+    # Create NFD CR
+    oc apply -f nfd/nfd-cr.yaml || exit 1
 
-case $TEE_TYPE in
-tdx)
-    create_intel_node_feature_rules || exit 1
-    deploy_intel_device_plugins || exit 1
-    ;;
-snp)
-    create_amd_node_feature_rules || exit 1
-    ;;
-esac
+    case $TEE_TYPE in
+    tdx)
+        create_intel_node_feature_rules || exit 1
+        deploy_intel_device_plugins || exit 1
+        ;;
+    snp)
+        create_amd_node_feature_rules || exit 1
+        ;;
+    esac
+fi
 
 deploy_osc_operator || exit 1
 
