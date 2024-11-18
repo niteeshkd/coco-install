@@ -4,7 +4,6 @@
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
-UPDATE_KATA_SHIM=false
 SKIP_NFD=false
 TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
 
@@ -393,7 +392,7 @@ EOF
 }
 
 function display_help() {
-    echo "Usage: install.sh -t <tee_type> [-h] [-m] [-s] [-b] [-k] [-u]"
+    echo "Usage: install.sh -t <tee_type> [-h] [-m] [-s] [-b] [-u]"
     echo "Options:"
     echo "  -t <tee_type> Specify the TEE type (tdx or snp)"
     echo "  -h Display help"
@@ -402,7 +401,6 @@ function display_help() {
     echo "     Requires the secret to be set in PULL_SECRET_JSON environment variable"
     echo "     Example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
     echo "  -b Use pre-ga operator bundles"
-    echo "  -k Updating Kata shim"
     echo "  -u Uninstall the installed artifacts"
     echo " "
     echo "Some environment variables that can be set:"
@@ -457,21 +455,6 @@ function verify_params() {
 
 }
 
-# Function to update Kata Shim
-function update_kata_shim() {
-
-    # Install daemonset for kata-shim
-    oc apply -f kata-shim-ds.yaml || exit 1
-
-    # Check if the daemonset is ready
-    oc wait --for=jsonpath='{.status.numberReady}'=1 ds/kata-shim -n openshift-sandboxed-containers-operator --timeout=300s || exit 1
-
-    # Apply the MachineConfig to update the associated crio config
-    oc apply -f mc-60-kata-config.yaml || exit 1
-
-    echo "Kata Shim is updated successfully"
-}
-
 function uninstall_node_feature_discovery() {
     tee_type="${1:-}"
 
@@ -504,25 +487,11 @@ function uninstall() {
     # Uninstall NFD
     uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
 
-    # Delete the daemonset if it exists
-    oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
-    return_code=$?
-    if [ $return_code -eq 0 ]; then
-        oc delete ds kata-shim -n openshift-sandboxed-containers-operator || exit 1
-    fi
-
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
         oc delete kataconfig cluster-kataconfig || exit 1
-    fi
-
-    # Delete the MachineConfig 60-worker-kata-config if it exists
-    oc get mc 60-worker-kata-config &>/dev/null
-    return_code=$?
-    if [ $return_code -eq 0 ]; then
-        oc delete mc 60-worker-kata-config || exit 1
     fi
 
     oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
@@ -579,7 +548,7 @@ function print_env_vars() {
     echo "TRUSTEE_URL: $TRUSTEE_URL"
 }
 
-while getopts "t:hmsbku" opt; do
+while getopts "t:hmsbu" opt; do
     case $opt in
     t)
         # Convert it to lower case
@@ -603,10 +572,6 @@ while getopts "t:hmsbku" opt; do
     b)
         echo "Using non-ga operator bundles"
         GA_RELEASE=false
-        ;;
-    k)
-        echo "Updating Kata Shim"
-        UPDATE_KATA_SHIM=true
         ;;
     u)
         echo "Uninstalling"
@@ -715,22 +680,6 @@ create_runtimeclasses "$TEE_TYPE"
 
 # set the aa_kbc_params config for the kata agent to be used CoCo attestation
 set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
-
-# If UPDATE_KATA_SHIM is true, then update Kata Shim
-if [ "$UPDATE_KATA_SHIM" = true ]; then
-    update_kata_shim
-
-    # Wait for sometime before checking for MCP
-    sleep 10
-    # If single node OpenShift, then wait for the master MCP to be ready
-    # Else wait for kata-oc MCP to be ready
-    if is_single_node_ocp; then
-        echo "SNO"
-        wait_for_mcp master || exit 1
-    else
-        wait_for_mcp kata-oc || exit 1
-    fi
-fi
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
 
