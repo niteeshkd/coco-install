@@ -681,6 +681,15 @@ create_runtimeclasses "$TEE_TYPE"
 # set the aa_kbc_params config for the kata agent to be used CoCo attestation
 set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
 
+# If single node OpenShift, then wait for the master MCP to be ready
+# Else wait for kata-oc MCP to be ready
+if is_single_node_ocp; then
+    echo "SNO"
+    wait_for_mcp master || exit 1
+else
+    wait_for_mcp kata-oc || exit 1
+fi
+
 echo "Sandboxed containers operator with CoCo support is installed successfully"
 
 # Print all the env variables values
