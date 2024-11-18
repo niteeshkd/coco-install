@@ -213,7 +213,7 @@ function deploy_nfd_operator() {
 }
 
 function create_intel_node_feature_rules() {
-    echo "Node Feature Discovery operator | creating node feature rules"
+    echo "Node Feature Discovery operator | creating intel node feature rules"
 
     pushd nfd || return 1
     oc apply -f intel-rules.yaml || return 1
@@ -230,6 +230,16 @@ function deploy_intel_device_plugins() {
     oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/sgx_device_plugin.yaml || return 1
 
     echo "Intel Device Plugins operator | deployment finished successfully"
+}
+
+function create_amd_node_feature_rules() {
+    echo "Node Feature Discovery operator | creating amd node feature rules"
+
+    pushd nfd || return 1
+    oc apply -f amd-rules.yaml || return 1
+    popd || return 1
+
+    echo "Node Feature Discovery operator | node feature rules successfully created"
 }
 
 # Function to create KataConfig based on TEE type
@@ -425,6 +435,9 @@ function uninstall_node_feature_discovery() {
         tdx)
             oc delete -f intel-rules.yaml || return 1
             ;;
+        snp)
+            oc delete -f amd-rules.yaml || return 1
+            ;;
         esac
 
         oc delete -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1
@@ -607,6 +620,9 @@ case $TEE_TYPE in
 tdx)
     create_intel_node_feature_rules || exit 1
     deploy_intel_device_plugins || exit 1
+    ;;
+snp)
+    create_amd_node_feature_rules || exit 1
     ;;
 esac
 
