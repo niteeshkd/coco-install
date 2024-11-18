@@ -232,6 +232,41 @@ function deploy_intel_device_plugins() {
     echo "Intel Device Plugins operator | deployment finished successfully"
 }
 
+# Function to create KataConfig based on TEE type
+function create_kataconfig() {
+    local tee_type=${1}
+    local label='coco: "true"'
+
+    case $tee_type in
+    tdx)
+        label='intel.feature.node.kubernetes.io/tdx: "true"'
+        ;;
+    snp)
+        label='amd.feature.node.kubernetes.io/snp: "true"'
+        ;;
+    esac
+
+    # Create KataConfig object
+    oc apply -f - <<EOF
+apiVersion: kataconfiguration.openshift.io/v1
+kind: KataConfig
+metadata:
+  name: cluster-kataconfig
+spec:
+  enablePeerPods: false
+  logLevel: info
+  kataConfigPoolSelector:
+    matchLabels:
+      $label
+EOF
+
+    result=$?
+    [ $result -eq 0 ] || return 1
+
+    echo "KataConfig object successfully created"
+    return 0
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -268,7 +303,6 @@ overhead:
     tdx.intel.com/keys: 1
 scheduling:
   nodeSelector:
-     intel.feature.node.kubernetes.io/tdx: "true"
      $label
 EOF
         result=$?
@@ -591,7 +625,7 @@ else
 fi
 
 # Create Kataconfig
-oc apply -f kataconfig.yaml || exit 1
+create_kataconfig "$TEE_TYPE" || exit 1
 
 # Wait for sometime before checking for MCP
 sleep 10
