@@ -188,12 +188,12 @@ function add_image_pull_secret() {
 function deploy_node_feature_discovery() {
     echo "Node Feature Discovery operator | starting the deployment"
 
-    pushd nfd
+    pushd nfd || return 1
     oc apply -f ns.yaml || return 1
     oc apply -f og.yaml || return 1
     oc apply -f subs.yaml || return 1
     oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1
-    popd
+    popd || return 1
 
     wait_for_deployment nfd-controller-manager openshift-nfd || return 1
     echo "Node Feature Discovery operator | deployment finished successfully"
@@ -202,9 +202,9 @@ function deploy_node_feature_discovery() {
 function create_intel_node_feature_rules() {
     echo "Node Feature Discovery operator | creating node feature rules"
 
-    pushd nfd
+    pushd nfd || return 1
     oc apply -f intel-rules.yaml || return 1
-    popd
+    popd || return 1
 
     echo "Node Feature Discovery operator | node feature rules successfully created"
 }
@@ -373,7 +373,7 @@ function uninstall_node_feature_discovery() {
     oc get deployment nfd-controller-manager -n openshift-nfd &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        pushd nfd
+        pushd nfd || return 1
         case $tee_type in
         tdx)
             oc delete -f intel-rules.yaml || return 1
@@ -384,7 +384,7 @@ function uninstall_node_feature_discovery() {
         oc delete -f subs.yaml || return 1
         oc delete -f og.yaml || return 1
         oc delete -f ns.yaml || return 1
-        popd
+        popd || return 1
     fi
 }
 
@@ -394,7 +394,7 @@ function uninstall() {
     echo "Uninstalling all the artifacts"
 
     # Uninstall NFD
-    uninstall_node_feature_discovery $TEE_TYPE || exit 1
+    uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
 
     # Delete the daemonset if it exists
     oc get ds kata-shim -n openshift-sandboxed-containers-operator &>/dev/null
