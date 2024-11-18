@@ -304,7 +304,7 @@ function set_aa_kbc_params_for_kata_agent() {
 
     case $tee_type in
     tdx)
-        filepath=/usr/kata/share/defaults/kata-containers/96-kata-kernel-config
+        filepath=/etc/kata-containers/tdx/96-kata-kernel-config
         ;;
     snp)
         filepath=/opt/kata/share/defaults/kata-containers/96-kata-kernel-config
@@ -326,7 +326,7 @@ spec:
     storage:
       files:
       - contents:
-          source: $source
+          source: data:text/plain;charset=utf-8;base64,$source
         mode: 420
         overwrite: true
         path: $filepath
