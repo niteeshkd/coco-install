@@ -2,7 +2,12 @@
 
 These are helper scripts to setup CoCo on a bare-metal OpenShift worker node.
 
-At least one bare-metal worker node with `coco: true` label is needed.
+NodeFeatureDiscovery (NFD) operator is used to label the TDX and SNP nodes.
+`intel.feature.node.kubernetes.io/tdx: "true"` is used for TDX nodes and
+`amd.feature.node.kubernetes.io/snp: "true"` is used for SNP nodes.
+
+Kata runtime is configured on the nodes with the above labels.
+Note that currently the script only supports installing a single TEE environment.
 
 ## Install OSC GA release
 
