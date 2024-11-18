@@ -440,7 +440,7 @@ function uninstall_node_feature_discovery() {
             ;;
         esac
 
-        oc delete -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1
+        oc delete -f nfd-cr.yaml || return 1
         oc delete -f subs.yaml || return 1
         oc delete -f og.yaml || return 1
         oc delete -f ns.yaml || return 1
