@@ -291,6 +291,7 @@ EOF
 function create_runtimeclasses() {
     local tee_type=${1}
     local label='node-role.kubernetes.io/kata-oc: ""'
+    local ext_resources=''
 
     if is_single_node_ocp; then
         label='node-role.kubernetes.io/master: ""'
@@ -298,42 +299,37 @@ function create_runtimeclasses() {
 
     case $tee_type in
     tdx)
-        echo "kata-tdx | creating runtime class"
-
-        oc apply -f - <<EOF
-apiVersion: node.k8s.io/v1
-kind: RuntimeClass
-metadata:
-  name: kata-tdx
-handler: kata-tdx
-overhead:
-  podFixed:
-    memory: "350Mi"
-    cpu: "250m"
-    tdx.intel.com/keys: 1
-scheduling:
-  nodeSelector:
-     $label
-EOF
-        result=$?
-        [ $result -eq 0 ] || return 1
-
-        echo "kata-tdx | runtime class successfully created"
-        return 0
+        ext_resources='tdx.intel.com/keys: 1'
+        ;;
+    snp)
+        ext_resources='sev-snp.amd.com/esids: 1'
         ;;
     esac
 
-    # Use the label variable here, e.g., create RuntimeClass objects
+    echo "Creating kata-$tee_type RuntimeClass object"
+
+    #Create runtimeClass object
     oc apply -f - <<EOF
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
   name: kata-$tee_type
 handler: kata-$tee_type
+overhead:
+  podFixed:
+    memory: "350Mi"
+    cpu: "250m"
+    $ext_resources
 scheduling:
   nodeSelector:
-    $label
+     $label
 EOF
+    result=$?
+    [ $result -eq 0 ] || return 1
+
+    echo "kata-$tee_type RuntimeClass object successfully created"
+    return 0
+
 }
 
 function display_help() {
