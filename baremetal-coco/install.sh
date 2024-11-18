@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Defaults
-OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
@@ -347,7 +346,6 @@ function display_help() {
     echo "  -u Uninstall the installed artifacts"
     echo " "
     echo "Some environment variables that can be set:"
-    echo "  OCP_PULL_SECRET_LOCATION: Location of the pull secret file (default: $HOME/pull-secret.json)"
     echo "  SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
     # Add some example usage options
     echo " "
@@ -387,18 +385,6 @@ function verify_params() {
     if [ "$TEE_TYPE" != "tdx" ] && [ "$TEE_TYPE" != "snp" ]; then
         echo "Error: Invalid TEE type. It must be 'tdx' or 'snp'"
         display_help
-        exit 1
-    fi
-
-    # Check if the required environment variables are set
-    if [ -z "$OCP_PULL_SECRET_LOCATION" ]; then
-        echo "One or more required environment variables are not set"
-        exit 1
-    fi
-
-    # Check if the pull secret file exists
-    if [ ! -f "$OCP_PULL_SECRET_LOCATION" ]; then
-        echo "Pull secret file $OCP_PULL_SECRET_LOCATION doesn't exist"
         exit 1
     fi
 
@@ -524,7 +510,6 @@ function uninstall() {
 
 # Function to print all the env variables
 function print_env_vars() {
-    echo "OCP_PULL_SECRET_LOCATION: $OCP_PULL_SECRET_LOCATION"
     echo "ADD_IMAGE_PULL_SECRET: $ADD_IMAGE_PULL_SECRET"
     echo "GA_RELEASE: $GA_RELEASE"
     echo "MIRRORING: $MIRRORING"
