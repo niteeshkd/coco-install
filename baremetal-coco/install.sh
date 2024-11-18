@@ -184,15 +184,14 @@ function add_image_pull_secret() {
 
 }
 
-# Function to deploy NodeFeatureDiscovery (NFD)
-function deploy_node_feature_discovery() {
+# Function to deploy NodeFeatureDiscovery (NFD) operator
+function deploy_nfd_operator() {
     echo "Node Feature Discovery operator | starting the deployment"
 
     pushd nfd || return 1
     oc apply -f ns.yaml || return 1
     oc apply -f og.yaml || return 1
     oc apply -f subs.yaml || return 1
-    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/nfd/node-feature-discovery-openshift.yaml || return 1
     popd || return 1
 
     wait_for_deployment nfd-controller-manager openshift-nfd || return 1
@@ -471,7 +470,6 @@ function print_env_vars() {
 }
 
 while getopts "t:hmsbku" opt; do
-    do_uninstall=false
     case $opt in
     t)
         # Convert it to lower case
@@ -552,6 +550,18 @@ if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
 
 fi
 
+deploy_nfd_operator || exit 1
+
+# Create NFD CR
+oc apply -f nfd/nfd-cr.yaml || exit 1
+
+case $TEE_TYPE in
+tdx)
+    create_intel_node_feature_rules || exit 1
+    deploy_intel_device_plugins || exit 1
+    ;;
+esac
+
 # Apply the operator manifests
 apply_operator_manifests
 
@@ -589,15 +599,6 @@ fi
 
 # Wait for runtimeclass kata to be ready
 wait_for_runtimeclass kata || exit 1
-
-deploy_node_feature_discovery || exit 1
-
-case $TEE_TYPE in
-tdx)
-    create_intel_node_feature_rules || exit 1
-    deploy_intel_device_plugins || exit 1
-    ;;
-esac
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
