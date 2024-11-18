@@ -4,7 +4,7 @@
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
-SKIP_NFD=false
+SKIP_NFD="${SKIP_NFD:-false}"
 TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
 
 # Function to check if the oc command is available
@@ -404,8 +404,8 @@ function display_help() {
     echo "  -u Uninstall the installed artifacts"
     echo " "
     echo "Some environment variables that can be set:"
-    echo "  SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
-    echo " TRUSTEE_URL: Trustee URL to be used in the kernel config (default: http://kbs-service:8080)"
+    echo "SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
+    echo "TRUSTEE_URL: Trustee URL to be used in the kernel config (default: http://kbs-service:8080)"
     # Add some example usage options
     echo " "
     echo "Example usage:"
