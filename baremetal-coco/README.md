@@ -9,6 +9,41 @@ NodeFeatureDiscovery (NFD) operator is used to label the TDX and SNP nodes.
 Kata runtime is configured on the nodes with the above labels.
 Note that currently the script only supports installing a single TEE environment.
 
+## Prerequisites
+
+Install Trustee operator for attestation and retrieve the Trustee URL.
+For PoC/demos, you can use the same cluster for Trustee and the CoCo workloads.
+Ideally, the Trustee should be deployed in a separate trusted environment.
+
+Follow these steps to install Trustee, using the helper scripts available at the following [dir](../misc/trustee-operator-install).
+
+- Switch to the root folder of this repo if you are under `baremetal-coco`.
+
+- Install Trustee
+
+  ```sh
+  cd coco-install/misc/trustee-operator-install
+  ./install.sh
+  ```
+
+- Retrieve and set the TRUSTEE_URL env variable  
+  
+  If using ClusterIP then use the following command
+
+  ```sh
+  TRUSTEE_HOST=$(oc get svc -n trustee-operator-system kbs-service -o jsonpath={.spec.clusterIP})
+  TRUSTEE_PORT=$(oc get svc -n trustee-operator-system kbs-service -o jsonpath="{.spec.ports[0].targetPort}")
+  echo $TRUSTEE_HOST:$TRUSTEE_PORT
+  export TRUSTEE_URL="http://$TRUSTEE_HOST:$TRUSTEE_PORT"
+  ```
+
+  or, if using routes, then use the following command
+
+  ```sh
+  TRUSTEE_HOST=$(oc get route -n trustee-operator-system kbs-service -o jsonpath={.spec.host})
+  export TRUSTEE_URL="https://$TRUSTEE_HOST"  
+  ```
+
 ## Install OSC GA release
 
 - Update `startingCSV` key in the `subs-ga.yaml` file to use the GA release you need.

@@ -6,6 +6,7 @@ ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
 UPDATE_KATA_SHIM=false
 SKIP_NFD=false
+TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -277,6 +278,65 @@ EOF
     return 0
 }
 
+# Function to set aa_kbc_params for teh Kata agent to be used for
+# attestation
+# Use drop-in configuration via MachineConfig
+# This function accepts the TEE type as an argument
+# It also accepts the Trustee URL as an argument
+# Trustee URL should be complete URL with the form http(s)://<trustee_ip>:<port>
+function set_aa_kbc_params_for_kata_agent() {
+    local tee_type=${1}
+    local trustee_url=${2}
+    local source=""
+    local filepath=""
+
+    # Create base64 encoding of kernel_params with the trustee_url to be used as source
+    # Input kernel_params="agent.aa_kbc_params=cc_kbc::$trustee_url"
+
+    source=$(echo "kernel_params= "agent.aa_kbc_params=cc_kbc::"$trustee_url""" | base64 -w0) || return 1
+
+    # This is applied after Kata installation so we should use the kata-oc label
+    # for worker nodes
+    local mc_label="machineconfiguration.openshift.io/role: kata-oc"
+
+    if is_single_node_ocp; then
+        mc_label="machineconfiguration.openshift.io/role: master"
+    fi
+
+    case $tee_type in
+    tdx)
+        filepath=/usr/kata/share/defaults/kata-containers/96-kata-kernel-config
+        ;;
+    snp)
+        filepath=/opt/kata/share/defaults/kata-containers/96-kata-kernel-config
+        ;;
+    esac
+
+    cat <<EOF >./96-kata-kernel-config-mc.yaml
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    $mc_label
+  name: 96-kata-kernel-config
+  namespace: openshift-machine-config-operator
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+      - contents:
+          source: $source
+        mode: 420
+        overwrite: true
+        path: $filepath
+EOF
+
+    oc apply -f 96-kata-kernel-config-mc.yaml || return 1
+
+}
+
 # Function to create runtimeClass based on TEE type and
 # SNO or regular OCP
 # Generic template
@@ -347,6 +407,7 @@ function display_help() {
     echo " "
     echo "Some environment variables that can be set:"
     echo "  SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
+    echo " TRUSTEE_URL: Trustee URL to be used in the kernel config (default: http://kbs-service:8080)"
     # Add some example usage options
     echo " "
     echo "Example usage:"
@@ -515,7 +576,7 @@ function print_env_vars() {
     echo "MIRRORING: $MIRRORING"
     echo "TEE_TYPE: $TEE_TYPE"
     echo "SKIP_NFD: $SKIP_NFD"
-
+    echo "TRUSTEE_URL: $TRUSTEE_URL"
 }
 
 while getopts "t:hmsbku" opt; do
@@ -651,6 +712,9 @@ wait_for_runtimeclass kata || exit 1
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
+
+# set the aa_kbc_params config for the kata agent to be used CoCo attestation
+set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
 
 # If UPDATE_KATA_SHIM is true, then update Kata Shim
 if [ "$UPDATE_KATA_SHIM" = true ]; then
