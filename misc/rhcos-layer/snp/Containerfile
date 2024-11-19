@@ -22,6 +22,11 @@ RUN curl -LO https://github.com/niteeshkd/ocp-snp-coco/raw/refs/heads/main/data/
 
 COPY snp/crio.conf.d/ /etc/crio/crio.conf.d/
 
+# Copy the config toml to a read-write mount-point so that this can be overriden via 
+# machineconfig
+RUN mkdir -p /etc/kata-containers/snp/ && \
+    cp /usr/kata/share/defaults/kata-containers/configuration-qemu-snp.toml /etc/kata-containers/snp/configuration-qemu-snp.toml
+
 # Install RHEL9.5 beta kernel with SEV-SNP support
 RUN rpm-ostree override replace https://people.redhat.com/~bdas/rhel-9/kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-503.12.1_att_fix_test.el9_5.x86_64.rpm
  
