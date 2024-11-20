@@ -489,12 +489,28 @@ function uninstall() {
     oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
     rm -f ./96-kata-kernel-config-mc.yaml
 
+    # If single node OpenShift, then wait for the master MCP to be ready
+    # Else wait for kata-oc MCP to be ready
+    if is_single_node_ocp; then
+        echo "SNO"
+        wait_for_mcp master || exit 1
+    else
+        wait_for_mcp kata-oc || exit 1
+    fi
+
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
         oc delete kataconfig cluster-kataconfig || exit 1
     fi
+
+    echo "Waiting for MCP to be READY"
+
+    # Wait for sometime before checking for MCP
+    sleep 10
+    wait_for_mcp master || exit 1
+    wait_for_mcp worker || exit 1
 
     oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
     return_code=$?
