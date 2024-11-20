@@ -6,6 +6,7 @@ ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
 SKIP_NFD="${SKIP_NFD:-false}"
 TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
+CMD_TIMEOUT="${CMD_TIMEOUT:-900}"
 
 # Function to check if a command is available
 function check_command() {
@@ -20,12 +21,12 @@ function check_command() {
 function wait_for_deployment() {
     local deployment=$1
     local namespace=$2
-    local timeout=300
+    local timeout=$CMD_TIMEOUT
     local interval=5
     local elapsed=0
     local ready=0
 
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         ready=$(oc get deployment -n "$namespace" "$deployment" -o jsonpath='{.status.readyReplicas}')
         if [ "$ready" == "1" ]; then
             echo "Operator $deployment is ready"
@@ -66,12 +67,12 @@ function wait_for_deployment() {
 function wait_for_service_ep_ip() {
     local service=$1
     local namespace=$2
-    local timeout=300
+    local timeout=$CMD_TIMEOUT
     local interval=5
     local elapsed=0
     local ip=0
 
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         ip=$(oc get endpoints -n "$namespace" "$service" -o jsonpath='{.subsets[0].addresses[0].ip}')
         if [ -n "$ip" ]; then
             echo "Service $service IP is available"
@@ -87,11 +88,11 @@ function wait_for_service_ep_ip() {
 # Function to wait for MachineConfigPool (MCP) to be ready
 function wait_for_mcp() {
     local mcp=$1
-    local timeout=900
+    local timeout=$CMD_TIMEOUT
     local interval=5
     local elapsed=0
     local ready=0
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         if [ "$statusUpdated" == "True" ] && [ "$statusUpdating" == "False" ] && [ "$statusDegraded" == "False" ]; then
             echo "MCP $mcp is ready"
             return 0
@@ -109,13 +110,13 @@ function wait_for_mcp() {
 function wait_for_runtimeclass() {
 
     local runtimeclass=$1
-    local timeout=900
+    local timeout=$CMD_TIMEOUT
     local interval=5
     local elapsed=0
     local ready=0
 
     # oc get runtimeclass "$runtimeclass" -o jsonpath={.metadata.name} should return the runtimeclass
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         ready=$(oc get runtimeclass "$runtimeclass" -o jsonpath='{.metadata.name}')
         if [ "$ready" == "$runtimeclass" ]; then
             echo "Runtimeclass $runtimeclass is ready"
@@ -402,6 +403,7 @@ function display_help() {
     echo "Some environment variables that can be set:"
     echo "SKIP_NFD: Skip NFD operator installationa and CR creation (default: false)"
     echo "TRUSTEE_URL: Trustee URL to be used in the kernel config (default: http://kbs-service:8080)"
+    echo "CMD_TIMEOUT: Timeout for the commands (default: 900)"
     # Add some example usage options
     echo " "
     echo "Example usage:"
