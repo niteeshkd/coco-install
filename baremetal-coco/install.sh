@@ -7,18 +7,11 @@ GA_RELEASE=true
 SKIP_NFD="${SKIP_NFD:-false}"
 TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
 
-# Function to check if the oc command is available
-function check_oc() {
-    if ! command -v oc &>/dev/null; then
-        echo "oc command not found. Please install the oc CLI tool."
-        exit 1
-    fi
-}
-
-# Function to check if the jq command is available
-function check_jq() {
-    if ! command -v jq &>/dev/null; then
-        echo "jq command not found. Please install the jq CLI tool."
+# Function to check if a command is available
+function check_command() {
+    local cmd="$1"
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "$cmd command not found. Please install the $cmd CLI tool."
         exit 1
     fi
 }
@@ -598,7 +591,7 @@ done
 verify_params
 
 # Check if oc command is available
-check_oc
+check_command "oc"
 
 # Display the cluster information
 oc cluster-info || exit 1
@@ -620,7 +613,7 @@ fi
 if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
     echo "Adding additional cluster-wide image pull secret"
     # Check if jq command is available
-    check_jq
+    check_command "jq"
     add_image_pull_secret
 
     # Sleep for sometime before checking MCP status
