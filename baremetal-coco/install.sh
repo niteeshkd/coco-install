@@ -407,22 +407,31 @@ function display_help() {
     # Add some example usage options
     echo " "
     echo "Example usage:"
-    echo "# Install the GA operator"
-    echo " ./install.sh "
+    echo "# Install the GA operator for snp"
+    echo " ./install.sh -t snp"
     echo " "
-    echo "# Install the GA operator with image mirroring"
-    echo " ./install.sh -m"
+    echo "# Install the GA operator for tdx"
+    echo " ./install.sh -t tdx"
     echo " "
-    echo "# Install the GA operator with additional cluster-wide image pull secret"
+    echo "# Install the GA operator with image mirroring for snp"
+    echo " ./install.sh -m -t snp"
+    echo " "
+    echo "# Install the GA operator with additional cluster-wide image pull secret for tdx"
     echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
-    echo " ./install.sh -s"
+    echo " ./install.sh -s -t tdx"
     echo " "
-    echo "# Install the pre-GA operator with image mirroring and additional cluster-wide image pull secret"
-    echo " ./install.sh -m -s -b"
+    echo "# Install the pre-GA operator with image mirroring and additional cluster-wide image pull secret for snp"
+    echo " ./install.sh -m -s -b -t snp"
     echo " "
-    echo "# Deploy the pre-GA OSC operator with image mirroring and additional cluster-wide image pull secret"
+    echo "# Deploy the pre-GA OSC operator with image mirroring and additional cluster-wide image pull secret for tdx"
     echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
-    echo " ./install.sh -m -s -b"
+    echo " ./install.sh -m -s -b -t tdx"
+    echo " "
+    echo "# Uninstall the installed artifacts for tdx"
+    echo " ./install.sh -u -t tdx"
+    echo " "
+    echo "# Uninstall the installed artifacts for snp"
+    echo " ./install.sh -u -t snp"
     echo " "
 }
 
@@ -587,7 +596,6 @@ while getopts "t:hmsbu" opt; do
         ;;
     s)
         echo "Setting additional cluster-wide image pull secret"
-        # Check if jq command is available
         ADD_IMAGE_PULL_SECRET=true
         ;;
     b)
@@ -595,6 +603,10 @@ while getopts "t:hmsbu" opt; do
         GA_RELEASE=false
         ;;
     u)
+
+        ADD_IMAGE_PULL_SECRET=false
+        # Ensure TEE_TYPE is set
+        verify_params
         echo "Uninstalling"
         uninstall
         exit 0
