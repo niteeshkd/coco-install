@@ -289,10 +289,13 @@ function set_aa_kbc_params_for_kata_agent() {
     local source=""
     local filepath=""
 
-    # Create base64 encoding of kernel_params with the trustee_url to be used as source
+    # Create kata configuration toml override for the kernel_params
     # Input kernel_params="agent.aa_kbc_params=cc_kbc::$trustee_url"
+    kata_override="[hypervisor.qemu]
+kernel_params= \"agent.aa_kbc_params=cc_kbc::$trustee_url\""
 
-    source=$(echo "kernel_params= "agent.aa_kbc_params=cc_kbc::"$trustee_url""" | base64 -w0) || return 1
+    # Create base64 encoding of the drop-in to be used as source
+    source=$(echo "$kata_override" | base64 -w0) || return 1
 
     # This is applied after Kata installation so we should use the kata-oc label
     # for worker nodes
