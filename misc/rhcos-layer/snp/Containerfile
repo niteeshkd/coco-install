@@ -33,5 +33,9 @@ RUN rpm-ostree override replace https://people.redhat.com/~bdas/rhel-9/kernel-{,
 # Install qemu related packages from centos repo
 RUN rpm-ostree install qemu-kvm qemu-img
 
+# Selinux adjustments for monitor daemonset
+COPY snp/osc_monitor.cil /etc/kata-containers/osc_monitor.cil 
+RUN semodule -i  /etc/kata-containers/osc_monitor.cil
+
 RUN rpm-ostree cleanup -m && \
     ostree container commit
