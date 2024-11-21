@@ -563,7 +563,7 @@ function uninstall() {
     wait_for_mcp worker || exit 1
 
     # Delete the runtimeClass
-    oc get runtimeclass kata-"$TEE_TYPE" &>/dev/null
+    oc delete runtimeclass kata-"$TEE_TYPE" &>/dev/null
 
     echo "Uninstall completed successfully"
 }
