@@ -50,6 +50,10 @@ Follow these steps to install Trustee, using the helper scripts available at the
 
 - Kickstart the installation by running the following:
 
+> Depending on the time it takes for the nodes to reboot, sometimes the commands may timeout.
+> You can use a higher timeout eg. export CMD_TIMEOUT=1200
+> or you can re-run the script to complete the installation.
+
   For TDX hosts:
 
   ```sh
@@ -90,3 +94,19 @@ Follow these steps to install Trustee, using the helper scripts available at the
   This will deploy the pre-GA release of OSC operator on TDX hosts.
 
 After successful install `kata`, `kata-tdx` or `kata-snp` runtimeclasses will be created
+
+## Un-installation
+
+   Run the following command to uninstall
+
+   For TDX hosts:
+
+   ```sh
+   ./install.sh -t tdx -u
+   ```
+
+   For SNP hosts:
+
+   ```sh
+   ./install.sh -t snp -u
+   ```

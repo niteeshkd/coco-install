@@ -428,10 +428,10 @@ function display_help() {
     echo " ./install.sh -m -s -b -t tdx"
     echo " "
     echo "# Uninstall the installed artifacts for tdx"
-    echo " ./install.sh -u -t tdx"
+    echo " ./install.sh -t tdx -u"
     echo " "
     echo "# Uninstall the installed artifacts for snp"
-    echo " ./install.sh -u -t snp"
+    echo " ./install.sh -t snp -u"
     echo " "
 }
 
