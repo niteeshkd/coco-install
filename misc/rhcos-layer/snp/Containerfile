@@ -37,5 +37,8 @@ RUN rpm-ostree install qemu-kvm
 COPY snp/osc_monitor.cil /etc/kata-containers/osc_monitor.cil 
 RUN semodule -i  /etc/kata-containers/osc_monitor.cil
 
+# Selinux adjustments to provide access to sev
+RUN setsebool -P container_use_devices 1
+
 RUN rpm-ostree cleanup -m && \
     ostree container commit
