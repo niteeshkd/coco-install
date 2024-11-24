@@ -690,11 +690,11 @@ else
     echo "Unsupported TEE_TYPE. It must be tdx or snp" || exit 1
 fi
 
-# set the aa_kbc_params config for the kata agent to be used CoCo attestation
-set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
-
 # Create Kataconfig
 create_kataconfig "$TEE_TYPE" || exit 1
+
+# set the aa_kbc_params config for the kata agent to be used CoCo attestation
+set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
 
 # Wait for sometime before checking for MCP
 sleep 10
