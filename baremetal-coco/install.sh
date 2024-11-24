@@ -698,7 +698,6 @@ create_kataconfig "$TEE_TYPE" || exit 1
 
 # Wait for sometime before checking for MCP
 sleep 10
-
 # If single node OpenShift, then wait for the master MCP to be ready
 # Else wait for kata-oc MCP to be ready
 if is_single_node_ocp; then
@@ -707,23 +706,12 @@ if is_single_node_ocp; then
 else
     wait_for_mcp kata-oc || exit 1
 fi
-
-# Wait for runtimeclass kata to be ready
-wait_for_runtimeclass kata || exit 1
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
 create_runtimeclasses "$TEE_TYPE"
 
-# Wait for sometime before checking for MCP
-sleep 10
-# If single node OpenShift, then wait for the master MCP to be ready
-# Else wait for kata-oc MCP to be ready
-if is_single_node_ocp; then
-    echo "SNO"
-    wait_for_mcp master || exit 1
-else
-    wait_for_mcp kata-oc || exit 1
-fi
+# Wait for runtimeclass kata to be ready
+wait_for_runtimeclass kata-$TEE_TYPE || exit 1
 
 echo "Sandboxed containers operator with CoCo support is installed successfully"
 
