@@ -494,18 +494,12 @@ function uninstall() {
     # Uninstall NFD
     uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
 
+    # Delete the runtimeClass
+    oc delete runtimeclass kata-"$TEE_TYPE" &>/dev/null
+
     # Delete the MachineConfig 96-kata-kernel-config
     oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
     rm -f ./96-kata-kernel-config-mc.yaml
-
-    # If single node OpenShift, then wait for the master MCP to be ready
-    # Else wait for kata-oc MCP to be ready
-    if is_single_node_ocp; then
-        echo "SNO"
-        wait_for_mcp master || exit 1
-    else
-        wait_for_mcp kata-oc || exit 1
-    fi
 
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
@@ -521,6 +515,7 @@ function uninstall() {
     wait_for_mcp master || exit 1
     wait_for_mcp worker || exit 1
 
+    # Delete CoCo feature gate ConfigMap
     oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
@@ -561,9 +556,6 @@ function uninstall() {
     sleep 10
     wait_for_mcp master || exit 1
     wait_for_mcp worker || exit 1
-
-    # Delete the runtimeClass
-    oc delete runtimeclass kata-"$TEE_TYPE" &>/dev/null
 
     echo "Uninstall completed successfully"
 }
