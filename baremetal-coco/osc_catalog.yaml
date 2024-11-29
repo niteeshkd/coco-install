@@ -7,7 +7,7 @@ spec:
   displayName: OSC Upstream Operator Catalog
   sourceType: grpc
   #image: quay.io/openshift_sandboxed_containers/openshift-sandboxed-containers-operator-catalog@sha256:33aff6bb2551f4ccfb01cd05865e02ec27327ecd6421aac5fdd01f1f39d30303
-  image: quay.io/openshift_sandboxed_containers/openshift-sandboxed-containers-operator-catalog:1.7.0-11
+  image: quay.io/openshift_sandboxed_containers/openshift-sandboxed-containers-operator-catalog:1.8.1-1
   updateStrategy:
     registryPoll:
       interval: 5m
