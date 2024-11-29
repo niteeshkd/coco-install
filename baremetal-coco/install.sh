@@ -219,9 +219,11 @@ function create_intel_node_feature_rules() {
 function deploy_intel_device_plugins() {
     echo "Intel Device Plugins operator | starting the deployment"
 
-    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/install_operator.yaml || return 1
+    pushd intel-dpo || return 1
+    oc apply -f install_operator.yaml || return 1
     wait_for_deployment inteldeviceplugins-controller-manager openshift-operators || return 1
-    oc apply -f https://raw.githubusercontent.com/intel/intel-technology-enabling-for-openshift/main/device_plugins/sgx_device_plugin.yaml || return 1
+    oc apply -f sgx_device_plugin.yaml || return 1
+    popd || return 1
 
     echo "Intel Device Plugins operator | deployment finished successfully"
 }
