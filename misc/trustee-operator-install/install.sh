@@ -5,6 +5,7 @@ OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
+TRUSTEE_IMAGE=${TRUSTEE_IMAGE:-quay.io/openshift_sandboxed_containers/kbs:v0.10.1}
 
 # Function to check if the oc command is available
 function check_oc() {
@@ -195,6 +196,19 @@ function apply_operator_manifests() {
 
 }
 
+# Function to apply the operator manifests
+function override_trustee_image() {
+    if [ -n "$TRUSTEE_IMAGE" ]; then
+        oc patch csv -n trustee-operator-system trustee-operator.v0.1.0 --type=json -p="[
+        {
+            "op": "replace",
+            "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/1/env/1/value",
+            "value": "$TRUSTEE_IMAGE"
+        }
+        ]"
+    fi
+}
+
 # Function to uninstall the installed artifacts
 # It won't delete the cluster
 function uninstall() {
@@ -202,10 +216,10 @@ function uninstall() {
     echo "Uninstalling all the artifacts"
 
     # Delete kbsconfig cluster-kbsconfig if it exists
-    oc get kbsconfig cluster-kbsconfig &>/dev/null
+    oc get kbsconfig -n trustee-operator-system cluster-kbsconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete kbsconfig cluster-kbsconfig || exit 1
+        oc delete kbsconfig -n trustee-operator-system cluster-kbsconfig || exit 1
     fi
 
     # Delete trustee-upstream-catalog CatalogSource if it exists
@@ -268,6 +282,9 @@ function display_help() {
     echo "# Install the GA operator with additional cluster-wide image pull secret"
     echo " export PULL_SECRET_JSON='{"brew.registry.redhat.io": {"auth": "abcd1234"}, "registry.redhat.io": {"auth": "abcd1234"}}'"
     echo " ./install.sh -s"
+    echo " "
+    echo "# Install the GA operator with a custom trustee image"
+    echo " TRUSTEE_IMAGE=<trustee-image> ./install.sh"
     echo " "
     echo "# Install the pre-GA operator with image mirroring and additional cluster-wide image pull secret"
     echo " ./install.sh -m -s -b"
@@ -353,6 +370,12 @@ fi
 # Apply the operator manifests
 apply_operator_manifests
 
+wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
+
+# Override trustee image
+if [ "$TRUSTEE_IMAGE" != "" ]; then
+    override_trustee_image
+fi
 wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
 
 # Create Trustee artefacts
