@@ -27,11 +27,11 @@ COPY snp/crio.conf.d/ /etc/crio/crio.conf.d/
 RUN mkdir -p /etc/kata-containers/snp/ && \
     cp /usr/kata/share/defaults/kata-containers/configuration-qemu-snp.toml /etc/kata-containers/snp/configuration.toml
 
-# Install RHEL9.5 beta kernel with SEV-SNP support
-RUN rpm-ostree override replace https://people.redhat.com/~bdas/rhel-9/kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-503.12.1_att_fix_test.el9_5.x86_64.rpm
+# Replace the existing kernel by the kernel with SEV-SNP support
+RUN rpm-ostree override replace https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-533.el9.x86_64.rpm
  
-# Install qemu related packages from centos repo
-RUN rpm-ostree install qemu-kvm qemu-img
+# Install qemu
+RUN rpm-ostree install qemu-kvm
 
 # Selinux adjustments for monitor daemonset
 COPY snp/osc_monitor.cil /etc/kata-containers/osc_monitor.cil 
