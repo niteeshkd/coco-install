@@ -91,19 +91,37 @@ function wait_for_mcp() {
     local timeout=$CMD_TIMEOUT
     local interval=5
     local elapsed=0
-    local ready=0
+    local timeout_start_updating=30
+
+    # First, wait for sometime to let MCP start updating
+    while [ $elapsed -lt "$timeout_start_updating" ]; do
+        if [ "$statusUpdating" == "True" ]; then
+            echo "MCP $mcp has started updating"
+            break
+        fi
+        sleep $interval
+        elapsed=$((elapsed + interval))
+        statusUpdating=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updating")].status}')
+    done
+
+    # Now, wait for MCP to be ready
+    statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}' 2>/dev/null)
+    statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null) 
     while [ $elapsed -lt "$timeout" ]; do
         if [ "$statusUpdated" == "True" ] && [ "$statusUpdating" == "False" ] && [ "$statusDegraded" == "False" ]; then
             echo "MCP $mcp is ready"
             return 0
+        elif [ "$statusUpdating" == "True" ]; then
+            echo "[$elapsed] MCP $mcp is updating"
         fi
         sleep $interval
         elapsed=$((elapsed + interval))
-        statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}')
         statusUpdating=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updating")].status}')
-        statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}')
+        statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}' 2>/dev/null)
+        statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null) 
     done
-
+    echo "MCP $mcp is not ready after $elapsed seconds"
+    return 1
 }
 
 # Function to wait for runtimeclass to be ready
@@ -497,31 +515,34 @@ function uninstall() {
     uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
 
     # Delete the MachineConfig 96-kata-kernel-config
-    oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
-    rm -f ./96-kata-kernel-config-mc.yaml
+    oc get mc 96-kata-kernel-config &>/dev/null
+    return_code=$?
+    if [ $return_code -eq 0 ]; then
+        echo "Deleting the MachineConfig 96-kata-kernel-config"
+        oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
+        rm -f ./96-kata-kernel-config-mc.yaml
 
-    # If single node OpenShift, then wait for the master MCP to be ready
-    # Else wait for kata-oc MCP to be ready
-    if is_single_node_ocp; then
-        echo "SNO"
-        wait_for_mcp master || exit 1
-    else
-        wait_for_mcp kata-oc || exit 1
+        echo "Waiting for MCP to be READY"
+        # If single node OpenShift, then wait for the master MCP to be ready
+        # Else wait for kata-oc MCP to be ready
+        if is_single_node_ocp; then
+            echo "SNO"
+            wait_for_mcp master || exit 1
+        else
+            wait_for_mcp kata-oc || exit 1
+        fi
     fi
 
     # Delete kataconfig cluster-kataconfig if it exists
     oc get kataconfig cluster-kataconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
+        echo "Deleting the kataconfig cluster-kataconfig. It may take few minutes to complete the process."
         oc delete kataconfig cluster-kataconfig || exit 1
+        echo "Waiting for MCP to be READY"
+        wait_for_mcp master || exit 1
+        wait_for_mcp worker || exit 1
     fi
-
-    echo "Waiting for MCP to be READY"
-
-    # Wait for sometime before checking for MCP
-    sleep 10
-    wait_for_mcp master || exit 1
-    wait_for_mcp worker || exit 1
 
     oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
     return_code=$?
@@ -558,9 +579,6 @@ function uninstall() {
     fi
 
     echo "Waiting for MCP to be READY"
-
-    # Wait for sometime before checking for MCP
-    sleep 10
     wait_for_mcp master || exit 1
     wait_for_mcp worker || exit 1
 
@@ -636,9 +654,6 @@ if [ "$MIRRORING" = true ]; then
     echo "Creating image mirroring config"
     oc apply -f image_mirroring.yaml || exit 1
 
-    # Sleep for sometime before checking MCP status
-    sleep 10
-
     echo "Waiting for MCP to be ready"
     wait_for_mcp master || exit 1
     wait_for_mcp worker || exit 1
@@ -650,9 +665,6 @@ if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
     # Check if jq command is available
     check_command "jq"
     add_image_pull_secret
-
-    # Sleep for sometime before checking MCP status
-    sleep 10
 
     echo "Waiting for MCP to be ready"
     wait_for_mcp master || exit 1
@@ -695,9 +707,6 @@ fi
 # Create Kataconfig
 create_kataconfig "$TEE_TYPE" || exit 1
 
-# Wait for sometime before checking for MCP
-sleep 10
-
 # If single node OpenShift, then wait for the master MCP to be ready
 # Else wait for kata-oc MCP to be ready
 if is_single_node_ocp; then
@@ -716,8 +725,6 @@ create_runtimeclasses "$TEE_TYPE"
 # set the aa_kbc_params config for the kata agent to be used CoCo attestation
 set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
 
-# Wait for sometime before checking for MCP
-sleep 10
 # If single node OpenShift, then wait for the master MCP to be ready
 # Else wait for kata-oc MCP to be ready
 if is_single_node_ocp; then
