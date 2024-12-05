@@ -272,7 +272,7 @@ function create_kataconfig() {
     esac
 
     # Create KataConfig object
-    oc apply -f - || return 1 <<EOF
+    oc apply -f - <<EOF || return 1 
 apiVersion: kataconfiguration.openshift.io/v1
 kind: KataConfig
 metadata:
@@ -381,7 +381,7 @@ function create_runtimeclasses() {
     echo "Creating kata-$tee_type RuntimeClass object"
 
     #Create runtimeClass object
-    oc apply -f - || return 1 <<EOF
+    oc apply -f - <<EOF || return 1
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
