@@ -345,7 +345,7 @@ spec:
         path: $filepath
 EOF
 
-    oc apply -f "$KERNEL_CONFIG_MC_FILE" || return 1
+    oc apply -f "$KERNEL_CONFIG_MC_FILE"
 
 }
 
@@ -696,7 +696,7 @@ snp)
     ;;
 esac
 
-# Create Kataconfig
+# Create KataConfig
 create_kataconfig "$TEE_TYPE" || exit 1
 
 # If single node OpenShift, then wait for the master MCP to be ready
