@@ -686,13 +686,14 @@ deploy_osc_operator || exit 1
 oc apply -f osc-fg-cm.yaml || exit 1
 
 # Create Layered Image FG ConfigMap
-if [ "$TEE_TYPE" = "tdx" ]; then
+case $TEE_TYPE in
+tdx)
     oc apply -f layeredimage-cm-tdx.yaml || exit 1
-elif [ "$TEE_TYPE" = "snp" ]; then
+    ;;
+snp)
     oc apply -f layeredimage-cm-snp.yaml || exit 1
-else
-    echo "Unsupported TEE_TYPE. It must be tdx or snp" || exit 1
-fi
+    ;;
+esac
 
 # Create Kataconfig
 create_kataconfig "$TEE_TYPE" || exit 1
