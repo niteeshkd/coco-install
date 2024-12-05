@@ -4,6 +4,7 @@
 MIRRORING=false
 ADD_IMAGE_PULL_SECRET=false
 GA_RELEASE=true
+KERNEL_CONFIG_MC_FILE="./96-kata-kernel-config-mc.yaml"
 SKIP_NFD="${SKIP_NFD:-false}"
 TRUSTEE_URL="${TRUSTEE_URL:-"http://kbs-service:8080"}"
 CMD_TIMEOUT="${CMD_TIMEOUT:-900}"
@@ -323,7 +324,7 @@ kernel_params= \"agent.aa_kbc_params=cc_kbc::$trustee_url\""
         ;;
     esac
 
-    cat <<EOF >./96-kata-kernel-config-mc.yaml
+    cat <<EOF >"$KERNEL_CONFIG_MC_FILE"
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
@@ -344,7 +345,7 @@ spec:
         path: $filepath
 EOF
 
-    oc apply -f 96-kata-kernel-config-mc.yaml || return 1
+    oc apply -f "$KERNEL_CONFIG_MC_FILE" || return 1
 
 }
 
@@ -509,8 +510,8 @@ function uninstall() {
     return_code=$?
     if [ $return_code -eq 0 ]; then
         echo "Deleting the MachineConfig 96-kata-kernel-config"
-        oc delete -f 96-kata-kernel-config-mc.yaml &>/dev/null
-        rm -f ./96-kata-kernel-config-mc.yaml
+        oc delete -f "$KERNEL_CONFIG_MC_FILE" &>/dev/null
+        rm -f "$KERNEL_CONFIG_MC_FILE"
 
         echo "Waiting for MCP to be READY"
         # If single node OpenShift, then wait for the master MCP to be ready
