@@ -158,7 +158,7 @@ function apply_operator_manifests() {
         oc apply -f subs-ga.yaml || return 1
     else
         oc apply -f osc_catalog.yaml || return 1
-        oc apply -f subs.yaml || return 1
+        oc apply -f subs-upstream.yaml || return 1
     fi
 
 }
