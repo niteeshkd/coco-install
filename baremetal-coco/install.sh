@@ -13,7 +13,7 @@ function check_command() {
     local cmd="$1"
     if ! command -v "$cmd" &>/dev/null; then
         echo "$cmd command not found. Please install the $cmd CLI tool."
-        exit 1
+        return 1
     fi
 }
 
@@ -75,7 +75,7 @@ function wait_for_service_ep_ip() {
     while [ $elapsed -lt "$timeout" ]; do
         ip=$(oc get endpoints -n "$namespace" "$service" -o jsonpath='{.subsets[0].addresses[0].ip}')
         if [ -n "$ip" ]; then
-            echo "Service $service IP is available"
+            echo "Service $service IP ($ip) is available"
             return 0
         fi
         sleep $interval
@@ -106,7 +106,7 @@ function wait_for_mcp() {
 
     # Now, wait for MCP to be ready
     statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}' 2>/dev/null)
-    statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null) 
+    statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null)
     while [ $elapsed -lt "$timeout" ]; do
         if [ "$statusUpdated" == "True" ] && [ "$statusUpdating" == "False" ] && [ "$statusDegraded" == "False" ]; then
             echo "MCP $mcp is ready"
@@ -118,7 +118,7 @@ function wait_for_mcp() {
         elapsed=$((elapsed + interval))
         statusUpdating=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updating")].status}')
         statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}' 2>/dev/null)
-        statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null) 
+        statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}' 2>/dev/null)
     done
     echo "MCP $mcp is not ready after $elapsed seconds"
     return 1
@@ -137,27 +137,27 @@ function wait_for_runtimeclass() {
     while [ $elapsed -lt "$timeout" ]; do
         ready=$(oc get runtimeclass "$runtimeclass" -o jsonpath='{.metadata.name}')
         if [ "$ready" == "$runtimeclass" ]; then
-            echo "Runtimeclass $runtimeclass is ready"
+            echo "RuntimeClass $runtimeclass is ready"
             return 0
         fi
         sleep $interval
         elapsed=$((elapsed + interval))
     done
 
-    echo "Runtimeclass $runtimeclass is not ready after $timeout seconds"
+    echo "RuntimeClass $runtimeclass is not ready after $timeout seconds"
     return 1
 }
 
 # Function to apply the operator manifests
 function apply_operator_manifests() {
-    # Apply the manifests, error exit if any of them fail
-    oc apply -f ns.yaml || exit 1
-    oc apply -f og.yaml || exit 1
+    # Apply the manifests
+    oc apply -f ns.yaml || return 1
+    oc apply -f og.yaml || return 1
     if [[ "$GA_RELEASE" == "true" ]]; then
-        oc apply -f subs-ga.yaml || exit 1
+        oc apply -f subs-ga.yaml || return 1
     else
-        oc apply -f osc_catalog.yaml || exit 1
-        oc apply -f subs.yaml || exit 1
+        oc apply -f osc_catalog.yaml || return 1
+        oc apply -f subs.yaml || return 1
     fi
 
 }
@@ -181,18 +181,18 @@ function add_image_pull_secret() {
     if [ -z "$PULL_SECRET_JSON" ]; then
         echo "PULL_SECRET_JSON environment variable is not set"
         echo "example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
-        exit 1
+        return 1
     fi
 
     # Get the existing secret
     oc get -n openshift-config secret/pull-secret -ojson | jq -r '.data.".dockerconfigjson"' | base64 -d | jq '.' >cluster-pull-secret.json ||
-        exit 1
+        return 1
 
     # Add the new secret to the existing secret
-    jq --argjson data "$PULL_SECRET_JSON" '.auths |= ($data + .)' cluster-pull-secret.json >cluster-pull-secret-mod.json || exit 1
+    jq --argjson data "$PULL_SECRET_JSON" '.auths |= ($data + .)' cluster-pull-secret.json >cluster-pull-secret-mod.json || return 1
 
     # Set the image pull secret
-    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=cluster-pull-secret-mod.json || exit 1
+    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=cluster-pull-secret-mod.json || return 1
 
 }
 
@@ -200,7 +200,7 @@ function add_image_pull_secret() {
 function deploy_osc_operator() {
     echo "OpenShift sandboxed containers operator | starting the deployment"
     # Apply the operator manifests
-    apply_operator_manifests
+    apply_operator_manifests || return 1
 
     wait_for_deployment controller-manager openshift-sandboxed-containers-operator || return 1
 
@@ -271,7 +271,7 @@ function create_kataconfig() {
     esac
 
     # Create KataConfig object
-    oc apply -f - <<EOF
+    oc apply -f - || return 1 <<EOF
 apiVersion: kataconfiguration.openshift.io/v1
 kind: KataConfig
 metadata:
@@ -283,12 +283,7 @@ spec:
     matchLabels:
       $label
 EOF
-
-    result=$?
-    [ $result -eq 0 ] || return 1
-
     echo "KataConfig object successfully created"
-    return 0
 }
 
 # Function to set aa_kbc_params for teh Kata agent to be used for
@@ -385,7 +380,7 @@ function create_runtimeclasses() {
     echo "Creating kata-$tee_type RuntimeClass object"
 
     #Create runtimeClass object
-    oc apply -f - <<EOF
+    oc apply -f - || return 1 <<EOF
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
@@ -400,12 +395,7 @@ scheduling:
   nodeSelector:
      $label
 EOF
-    result=$?
-    [ $result -eq 0 ] || return 1
-
     echo "kata-$tee_type RuntimeClass object successfully created"
-    return 0
-
 }
 
 function display_help() {
@@ -464,20 +454,20 @@ function verify_params() {
     if [ -z "$TEE_TYPE" ]; then
         echo "Error: TEE type (-t) is mandatory"
         display_help
-        exit 1
+        return 1
     fi
 
     # Verify TEE_TYPE is valid
     if [ "$TEE_TYPE" != "tdx" ] && [ "$TEE_TYPE" != "snp" ]; then
         echo "Error: Invalid TEE type. It must be 'tdx' or 'snp'"
         display_help
-        exit 1
+        return 1
     fi
 
     # If ADD_IMAGE_PULL_SECRET is true,  then check if PULL_SECRET_JSON is set
     if [ "$ADD_IMAGE_PULL_SECRET" = true ] && [ -z "$PULL_SECRET_JSON" ]; then
         echo "ADD_IMAGE_PULL_SECRET is set but required environment variable: PULL_SECRET_JSON is not set"
-        exit 1
+        return 1
     fi
 
 }
@@ -512,7 +502,7 @@ function uninstall() {
     echo "Uninstalling all the artifacts"
 
     # Uninstall NFD
-    uninstall_node_feature_discovery "$TEE_TYPE" || exit 1
+    uninstall_node_feature_discovery "$TEE_TYPE" || return 1
 
     # Delete the MachineConfig 96-kata-kernel-config
     oc get mc 96-kata-kernel-config &>/dev/null
@@ -527,9 +517,9 @@ function uninstall() {
         # Else wait for kata-oc MCP to be ready
         if is_single_node_ocp; then
             echo "SNO"
-            wait_for_mcp master || exit 1
+            wait_for_mcp master || return 1
         else
-            wait_for_mcp kata-oc || exit 1
+            wait_for_mcp kata-oc || return 1
         fi
     fi
 
@@ -538,49 +528,49 @@ function uninstall() {
     return_code=$?
     if [ $return_code -eq 0 ]; then
         echo "Deleting the kataconfig cluster-kataconfig. It may take few minutes to complete the process."
-        oc delete kataconfig cluster-kataconfig || exit 1
+        oc delete kataconfig cluster-kataconfig || return 1
         echo "Waiting for MCP to be READY"
-        wait_for_mcp master || exit 1
-        wait_for_mcp worker || exit 1
+        wait_for_mcp master || return 1
+        wait_for_mcp worker || return 1
     fi
 
     oc get cm osc-feature-gates -n openshift-sandboxed-containers-operator &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete cm osc-feature-gates -n openshift-sandboxed-containers-operator || exit 1
+        oc delete cm osc-feature-gates -n openshift-sandboxed-containers-operator || return 1
     fi
 
     # Delete osc-upstream-catalog CatalogSource if it exists
     oc get catalogsource osc-upstream-catalog -n openshift-marketplace &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete catalogsource osc-upstream-catalog -n openshift-marketplace || exit 1
+        oc delete catalogsource osc-upstream-catalog -n openshift-marketplace || return 1
     fi
 
     # Delete ImageTagMirrorSet osc-brew-registry-tag if it exists
     oc get imagetagmirrorset osc-brew-registry-tag &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete imagetagmirrorset osc-brew-registry-tag || exit 1
+        oc delete imagetagmirrorset osc-brew-registry-tag || return 1
     fi
 
     # Delete ImageDigestMirrorSet osc-brew-registry-digest if it exists
     oc get imagedigestmirrorset osc-brew-registry-digest &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete imagedigestmirrorset osc-brew-registry-digest || exit 1
+        oc delete imagedigestmirrorset osc-brew-registry-digest || return 1
     fi
 
     # Delete the namespace openshift-sandboxed-containers-operator if it exists
     oc get ns openshift-sandboxed-containers-operator &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete ns openshift-sandboxed-containers-operator || exit 1
+        oc delete ns openshift-sandboxed-containers-operator || return 1
     fi
 
     echo "Waiting for MCP to be READY"
-    wait_for_mcp master || exit 1
-    wait_for_mcp worker || exit 1
+    wait_for_mcp master || return 1
+    wait_for_mcp worker || return 1
 
     # Delete the runtimeClass
     oc delete runtimeclass kata-"$TEE_TYPE" &>/dev/null
@@ -628,7 +618,7 @@ while getopts "t:hmsbu" opt; do
         # Ensure TEE_TYPE is set
         verify_params
         echo "Uninstalling"
-        uninstall
+        uninstall || exit 1
         exit 0
         ;;
 
@@ -641,10 +631,10 @@ while getopts "t:hmsbu" opt; do
 done
 
 # Verify all required parameters are set
-verify_params
+verify_params || exit 1
 
 # Check if oc command is available
-check_command "oc"
+check_command "oc" || exit 1
 
 # Display the cluster information
 oc cluster-info || exit 1
@@ -663,8 +653,8 @@ fi
 if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
     echo "Adding additional cluster-wide image pull secret"
     # Check if jq command is available
-    check_command "jq"
-    add_image_pull_secret
+    check_command "jq" || exit 1
+    add_image_pull_secret || exit 1
 
     echo "Waiting for MCP to be ready"
     wait_for_mcp master || exit 1
@@ -720,7 +710,7 @@ fi
 wait_for_runtimeclass kata || exit 1
 
 # Create runtimeClass kata-tdx or kata-snp based on TEE_TYPE
-create_runtimeclasses "$TEE_TYPE"
+create_runtimeclasses "$TEE_TYPE" || exit 1
 
 # set the aa_kbc_params config for the kata agent to be used CoCo attestation
 set_aa_kbc_params_for_kata_agent "$TEE_TYPE" "$TRUSTEE_URL" || exit 1
