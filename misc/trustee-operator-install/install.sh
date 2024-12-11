@@ -11,7 +11,7 @@ TRUSTEE_IMAGE=${TRUSTEE_IMAGE:-quay.io/openshift_sandboxed_containers/kbs:v0.10.
 function check_oc() {
     if ! command -v oc &>/dev/null; then
         echo "oc command not found. Please install the oc CLI tool."
-        exit 1
+        return 1
     fi
 }
 
@@ -19,7 +19,7 @@ function check_oc() {
 function check_jq() {
     if ! command -v jq &>/dev/null; then
         echo "jq command not found. Please install the jq CLI tool."
-        exit 1
+        return 1
     fi
 }
 
@@ -27,7 +27,7 @@ function check_jq() {
 function check_openssl() {
     if ! command -v openssl &>/dev/null; then
         echo "openssl command not found. Please install the openssl CLI tool."
-        exit 1
+        return 1
     fi
 }
 
@@ -128,18 +128,18 @@ function add_image_pull_secret() {
     if [ -z "$PULL_SECRET_JSON" ]; then
         echo "PULL_SECRET_JSON environment variable is not set"
         echo "example PULL_SECRET_JSON='{\"my.registry.io\": {\"auth\": \"ABC\"}}'"
-        exit 1
+        return 1
     fi
 
     # Get the existing secret
     oc get -n openshift-config secret/pull-secret -ojson | jq -r '.data.".dockerconfigjson"' | base64 -d | jq '.' >cluster-pull-secret.json ||
-        exit 1
+        return 1
 
     # Add the new secret to the existing secret
-    jq --argjson data "$PULL_SECRET_JSON" '.auths |= ($data + .)' cluster-pull-secret.json >cluster-pull-secret-mod.json || exit 1
+    jq --argjson data "$PULL_SECRET_JSON" '.auths |= ($data + .)' cluster-pull-secret.json >cluster-pull-secret-mod.json || return 1
 
     # Set the image pull secret
-    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=cluster-pull-secret-mod.json || exit 1
+    oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=cluster-pull-secret-mod.json || return 1
 
 }
 
@@ -152,46 +152,46 @@ function create_trustee_artefacts() {
 
     # Create kbs-auth-public-key secret if it doesn't exist
     if ! oc get secret kbs-auth-public-key -n trustee-operator-system &>/dev/null; then
-        oc create secret generic kbs-auth-public-key --from-file=publicKey -n trustee-operator-system || exit 1
+        oc create secret generic kbs-auth-public-key --from-file=publicKey -n trustee-operator-system || return 1
         echo "Secret kbs-auth-public-key created successfully"
     else
         echo "Secret kbs-auth-public-key already exists, skipping creation"
     fi
 
     # Create KBS configmap
-    oc apply -f kbs-cm.yaml || exit 1
+    oc apply -f kbs-cm.yaml || return 1
 
     # Create RVPS configmap
-    oc apply -f rvps-cm.yaml || exit 1
+    oc apply -f rvps-cm.yaml || return 1
 
     # Create resource policy configmap
-    oc apply -f resource-policy-cm.yaml || exit 1
+    oc apply -f resource-policy-cm.yaml || return 1
 
     # Create few secrets to serve via Trustee
     # Create kbsres1 secret only if it doesn't exist
     if ! oc get secret kbsres1 -n trustee-operator-system &>/dev/null; then
 
-        oc create secret generic kbsres1 --from-literal key1=res1val1 -n trustee-operator-system || exit 1
+        oc create secret generic kbsres1 --from-literal key1=res1val1 -n trustee-operator-system || return 1
         echo "Secret kbsres1 created successfully"
     else
         echo "Secret kbsres1 already exists, skipping creation"
     fi
 
     # Create KBSConfig
-    oc apply -f kbsconfig.yaml || exit 1
+    oc apply -f kbsconfig.yaml || return 1
 
 }
 
 # Function to apply the operator manifests
 function apply_operator_manifests() {
     # Apply the manifests, error exit if any of them fail
-    oc apply -f ns.yaml || exit 1
-    oc apply -f og.yaml || exit 1
+    oc apply -f ns.yaml || return 1
+    oc apply -f og.yaml || return 1
     if [[ "$GA_RELEASE" == "true" ]]; then
-        oc apply -f subs-ga.yaml || exit 1
+        oc apply -f subs-ga.yaml || return 1
     else
-        oc apply -f trustee_catalog.yaml || exit 1
-        oc apply -f subs.yaml || exit 1
+        oc apply -f trustee_catalog.yaml || return 1
+        oc apply -f subs.yaml || return 1
     fi
 
 }
@@ -219,43 +219,43 @@ function uninstall() {
     oc get kbsconfig -n trustee-operator-system cluster-kbsconfig &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete kbsconfig -n trustee-operator-system cluster-kbsconfig || exit 1
+        oc delete kbsconfig -n trustee-operator-system cluster-kbsconfig || return 1
     fi
 
     # Delete trustee-upstream-catalog CatalogSource if it exists
     oc get catalogsource trustee-upstream-catalog -n openshift-marketplace &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete catalogsource trustee-upstream-catalog -n openshift-marketplace || exit 1
+        oc delete catalogsource trustee-upstream-catalog -n openshift-marketplace || return 1
     fi
 
     # Delete ImageTagMirrorSet trustee-registry if it exists
     oc get imagetagmirrorset trustee-registry &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete imagetagmirrorset trustee-registry || exit 1
+        oc delete imagetagmirrorset trustee-registry || return 1
     fi
 
     # Delete ImageDigestMirrorSet trustee-registry if it exists
     oc get imagedigestmirrorset trustee-registry &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete imagedigestmirrorset trustee-registry || exit 1
+        oc delete imagedigestmirrorset trustee-registry || return 1
     fi
 
     # Delete the namespace trustee-operator-system if it exists
     oc get ns trustee-operator-system &>/dev/null
     return_code=$?
     if [ $return_code -eq 0 ]; then
-        oc delete ns trustee-operator-system || exit 1
+        oc delete ns trustee-operator-system || return 1
     fi
 
     echo "Waiting for MCP to be READY"
 
     # Wait for sometime before checking for MCP
     sleep 10
-    wait_for_mcp master || exit 1
-    wait_for_mcp worker || exit 1
+    wait_for_mcp master || return 1
+    wait_for_mcp worker || return 1
 
     echo "Uninstall completed successfully"
 }
@@ -317,7 +317,7 @@ while getopts "hmsbu" opt; do
         ;;
     u)
         echo "Uninstalling"
-        uninstall
+        uninstall || exit 1
         exit 0
         ;;
 
@@ -330,13 +330,13 @@ while getopts "hmsbu" opt; do
 done
 
 # Check if oc command is available
-check_oc
+check_oc || exit 1
 
 # Check if openssl command is available
-check_openssl
+check_openssl || exit 1
 
 # Apply the operator manifests
-apply_operator_manifests
+apply_operator_manifests || exit 1
 
 # If MIRRORING is true, then create the image mirroring config
 if [ "$MIRRORING" = true ]; then
@@ -355,8 +355,8 @@ fi
 if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
     echo "Adding additional cluster-wide image pull secret"
     # Check if jq command is available
-    check_jq
-    add_image_pull_secret
+    check_jq || exit 1
+    add_image_pull_secret || exit 1
 
     # Sleep for sometime before checking MCP status
     sleep 10
@@ -368,15 +368,15 @@ if [ "$ADD_IMAGE_PULL_SECRET" = true ]; then
 fi
 
 # Apply the operator manifests
-apply_operator_manifests
+apply_operator_manifests || exit 1
 
 wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
 
 # Override trustee image
 if [ "$TRUSTEE_IMAGE" != "" ]; then
-    override_trustee_image
+    override_trustee_image || exit 1
 fi
 wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
 
 # Create Trustee artefacts
-create_trustee_artefacts
+create_trustee_artefacts || exit 1
