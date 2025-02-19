@@ -6,9 +6,13 @@ AZURE_REGION="${AZURE_REGION:-eastus2}"
 ARO_VNET="${ARO_VNET:-aro-vnet}"
 ARO_VNET_CIDR="${ARO_VNET_CIDR:-10.0.0.0/22}"
 ARO_MASTER_SUBNET="${ARO_MASTER_SUBNET:-master-subnet}"
-ARO_MASTER_SUBNET_CIDR="${ARO_MASTER_SUBNET_CIDR:-10.0.0.0/23}"
+ARO_MASTER_SUBNET_CIDR="${ARO_MASTER_SUBNET_CIDR:-10.0.1.0/24}"
 ARO_WORKER_SUBNET="${ARO_WORKER_SUBNET:-worker-subnet}"
-ARO_WORKER_SUBNET_CIDR="${ARO_WORKER_SUBNET_CIDR:-10.0.2.0/23}"
+ARO_WORKER_SUBNET_CIDR="${ARO_WORKER_SUBNET_CIDR:-10.0.2.0/24}"
+ARO_PEERPOD_SUBNET="${ARO_PEERPOD_SUBNET:-peerpod-subnet}"
+ARO_PEERPOD_SUBNET_CIDR="${ARO_PEERPOD_SUBNET_CIDR:-10.0.3.0/24}"
+PEERPOD_NAT_GW="${PEERPOD_NAT_GW:-peerpod-nat-gw}"
+PEERPOD_NAT_GW_IP="${PEERPOD_NAT_GW_IP:-peerpod-nat-gw-ip}"
 ARO_CLUSTER_NAME="${ARO_CLUSTER_NAME:-aro-cluster}"
 ARO_VERSION="${ARO_VERSION:-4.15.35}"
 OCP_PULL_SECRET_LOCATION="${OCP_PULL_SECRET_LOCATION:-$HOME/pull-secret.json}"
@@ -247,6 +251,29 @@ function create_empty_subnet() {
         --address-prefixes "$subnet_cidr" || exit 1
 }
 
+# Function to create NAT gateway
+function create_nat_gw() {
+    local resource_group=$1
+    local location=$2
+    local nat_gw_name=$3
+    local nat_gw_ip=$4
+
+    az network public-ip create -g "$resource_group" -n "$nat_gw_ip" -l "$location" || exit 1
+    az network nat gateway create -g "$resource_group" -l "$location" \
+        --public-ip-addresses "$nat_gw_ip" -n "$nat_gw_name" || exit 1
+}
+
+# Function to attach NAT gateway to the subnet
+function attach_nat_gw_to_subnet() {
+    local resource_group=$1
+    local vnet_name=$2
+    local subnet_name=$3
+    local nat_gw_name=$4
+
+    az network vnet subnet update --resource-group "$resource_group" --vnet-name \
+        "$vnet_name" --name "$subnet_name" --nat-gateway "$nat_gw_name" || exit 1
+}
+
 # Function to check if ARO cluster with the name exists in the resource group and region
 function check_aro_cluster_exists() {
     local resource_group=$1
@@ -409,7 +436,7 @@ function build_peer_pods_cm {
         --from-literal=CLOUD_PROVIDER="azure" \
         --from-literal=VXLAN_PORT="9000" \
         --from-literal=AZURE_INSTANCE_SIZE="Standard_DC2as_v5" \
-	--from-literal=AZURE_INSTANCE_SIZES="Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5" \
+        --from-literal=AZURE_INSTANCE_SIZES="Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5" \
         --from-literal=AZURE_RESOURCE_GROUP="${ARO_RESOURCE_GROUP}" \
         --from-literal=AZURE_REGION="${AZURE_REGION}" \
         --from-literal=AZURE_SUBNET_ID="${ARO_WORKER_SUBNET_ID}" \
@@ -667,6 +694,10 @@ function print_env_vars() {
     echo "ARO_MASTER_SUBNET_CIDR: $ARO_MASTER_SUBNET_CIDR"
     echo "ARO_WORKER_SUBNET: $ARO_WORKER_SUBNET"
     echo "ARO_WORKER_SUBNET_CIDR: $ARO_WORKER_SUBNET_CIDR"
+    echo "ARO_PEERPOD_SUBNET: $ARO_PEERPOD_SUBNET"
+    echo "ARO_PEERPOD_SUBNET_CIDR: $ARO_PEERPOD_SUBNET_CIDR"
+    echo "PEERPOD_NAT_GW: $PEERPOD_NAT_GW"
+    echo "PEERPOD_NAT_GW_IP: $PEERPOD_NAT_GW_IP"
     echo "ARO_CLUSTER_NAME: $ARO_CLUSTER_NAME"
     echo "ARO_VERSION: $ARO_VERSION"
     echo "OCP_PULL_SECRET_LOCATION: $OCP_PULL_SECRET_LOCATION"
@@ -752,6 +783,15 @@ if [ "$CREATE_ARO_CLUSTER" = true ]; then
 
         # Create worker subnet for ARO
         create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_WORKER_SUBNET" "$ARO_WORKER_SUBNET_CIDR"
+
+        # Create peerpod subnet for ARO
+        create_empty_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_PEERPOD_SUBNET" "$ARO_PEERPOD_SUBNET_CIDR"
+
+        # Create NAT gateway for peerpod subnet
+        create_nat_gw "$AZURE_RESOURCE_GROUP" "$AZURE_REGION" "$PEERPOD_NAT_GW" "$PEERPOD_NAT_GW_IP"
+
+        # Attach NAT gateway to the peerpod subnet
+        attach_nat_gw_to_subnet "$AZURE_RESOURCE_GROUP" "$ARO_VNET" "$ARO_PEERPOD_SUBNET" "$PEERPOD_NAT_GW"
 
         # Create ARO cluster
         create_aro_cluster "$AZURE_RESOURCE_GROUP" "$ARO_CLUSTER_NAME" \
