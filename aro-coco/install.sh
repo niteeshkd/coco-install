@@ -393,19 +393,19 @@ function build_peer_pods_cm {
     # Get VNET name used by ARO. This exists in the admin created RG
     ARO_VNET_NAME=$(az network vnet list --resource-group "$AZURE_RESOURCE_GROUP" --query "[].{Name:name}" --output tsv)
 
-    # Get the OpenShift worker subnet ip address cidr. This exists in the admin created RG
-    ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group "$AZURE_RESOURCE_GROUP" \
-        --vnet-name "$ARO_VNET_NAME" --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+    # Get the OpenShift peerpod subnet ID. This exists in the admin created RG
+    ARO_PEERPOD_SUBNET_ID=$(az network vnet subnet list --resource-group "$AZURE_RESOURCE_GROUP" \
+        --vnet-name "$ARO_VNET_NAME" --query "[].{Id:id} | [? contains(Id, 'peerpod-subnet')]" --output tsv)
 
     ARO_NSG_ID=$(az network nsg list --resource-group "$ARO_RESOURCE_GROUP" --query "[].{Id:id}" --output tsv)
 
     echo "AZURE_REGION: \"$AZURE_REGION\""
     echo "AZURE_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-    echo "AZURE_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+    echo "AZURE_SUBNET_ID: \"$ARO_PEERPOD_SUBNET_ID\""
     echo "AZURE_NSG_ID: \"$ARO_NSG_ID\""
 
     # Verify if the values are not empty
-    if [ -z "$AZURE_REGION" ] || [ -z "$ARO_RESOURCE_GROUP" ] || [ -z "$ARO_WORKER_SUBNET_ID" ] || [ -z "$ARO_NSG_ID" ]; then
+    if [ -z "$AZURE_REGION" ] || [ -z "$ARO_RESOURCE_GROUP" ] || [ -z "$ARO_PEERPOD_SUBNET_ID" ] || [ -z "$ARO_NSG_ID" ]; then
         echo "peer-pods-cm required inputs are empty"
         exit 1
     fi
@@ -417,7 +417,7 @@ function build_peer_pods_cm {
     # AZURE_INSTANCE_SIZES: "Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5"
     # AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
     # AZURE_REGION: "${AZURE_REGION}"
-    # AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
+    # AZURE_SUBNET_ID: "${ARO_PEERPOD_SUBNET_ID}"
     # AZURE_NSG_ID: "${ARO_NSG_ID}"
     # DISABLECVM: "false"
     # AZURE_IMAGE_ID: ""
@@ -439,7 +439,7 @@ function build_peer_pods_cm {
         --from-literal=AZURE_INSTANCE_SIZES="Standard_DC2as_v5,Standard_DC4as_v5,Standard_DC8as_v5,Standard_DC16as_v5,Standard_DC2es_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC16es_v5" \
         --from-literal=AZURE_RESOURCE_GROUP="${ARO_RESOURCE_GROUP}" \
         --from-literal=AZURE_REGION="${AZURE_REGION}" \
-        --from-literal=AZURE_SUBNET_ID="${ARO_WORKER_SUBNET_ID}" \
+        --from-literal=AZURE_SUBNET_ID="${ARO_PEERPOD_SUBNET_ID}" \
         --from-literal=AZURE_NSG_ID="${ARO_NSG_ID}" \
         --from-literal=DISABLECVM="false" \
         --from-literal=AZURE_IMAGE_ID="" \
