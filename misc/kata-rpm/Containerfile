@@ -1,7 +1,7 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
 # Use subscription-manager to enable codeready-builder-for-rhel-9-x86_64-rpm
-RUN subscription-manager register --org XXX --activationkey YYY 
+RUN subscription-manager register --org XXX  --activationkey YYY
 RUN subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
 
 WORKDIR /
@@ -28,4 +28,4 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN cd /root/rpmbuild && \
     . "/root/.cargo/env" && \
     rpmbuild -bb SPECS/kata-containers.spec && \
-    ls -l RPMS/x86_64/*
+    cp RPMS/x86_64/* /host

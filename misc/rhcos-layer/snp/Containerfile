@@ -1,23 +1,28 @@
 # Use 4.18 as the base
-# 4.18.7 release image : quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:66d827b7f70729ca9dc6f7a2358df8fb37c82380cf36ca9653efff8605cf3a82
+# 4.18.10 release image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:bdaa82a5a1df84ee304cbf842c80278e2286fede509664c5f0cf9c93c0992658
 
 ARG OCP_RELEASE_IMAGE
 
 FROM $OCP_RELEASE_IMAGE
 
+ARG  OCP_KERNEL_VERSION=5.14.0-570.4.1.el9_6.x86_64
 COPY snp/centos-snp.repo /etc/yum.repos.d
 
 WORKDIR /
 
 # Use RH 9.6 kernel
 COPY snp/rpms/ /
-RUN rpm-ostree override replace kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-570.4.1.el9_6.x86_64.rpm
+RUN rpm-ostree override replace kernel-{,core-,modules-,modules-core-,modules-extra-}${OCP_KERNEL_VERSION}.rpm
  
 # Install qemu
 RUN rpm-ostree install qemu-kvm 
 
 # Install Kata-containers rpm
 RUN rpm-ostree install kata-containers-3.15.0-1.rhaos4.19.el9.x86_64.rpm 
+
+# Generate initrd
+RUN mkdir -p /var/cache/kata-containers && \
+   CC_GUEST=1 /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${OCP_KERNEL_VERSION} 
 
 # Selinux adjustments to provide access to sev
 RUN setsebool -P container_use_devices 1
