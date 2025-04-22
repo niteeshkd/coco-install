@@ -18,11 +18,7 @@ RUN rpm-ostree override replace kernel-{,core-,modules-,modules-core-,modules-ex
 RUN rpm-ostree install qemu-kvm 
 
 # Install Kata-containers rpm
-RUN rpm-ostree install kata-containers-3.15.0-1.rhaos4.19.el9.x86_64.rpm 
-
-# Generate initrd
-RUN mkdir -p /var/cache/kata-containers && \
-   CC_GUEST=1 /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${OCP_KERNEL_VERSION} 
+RUN rpm-ostree install kata-containers-3.15.0-1.rhaos4.19.el9.x86_64.rpm
 
 # Selinux adjustments to provide access to sev
 RUN setsebool -P container_use_devices 1
