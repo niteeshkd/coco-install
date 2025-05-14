@@ -13,10 +13,22 @@ WORKDIR /
 COPY ${CA_CERTS_FILE} /
 COPY ${REGISTRY_AUTH_FILE} /
 
+RUN if [ ${CA_CERTS_FILE} ]; then \
+        echo "CA_CERTS_FILE=/${CA_CERTS_FILE}" >> /envfile; \
+    else \
+        echo "CA_CERTS_FILE=" >> /envfile; \
+    fi && \
+    if [ ${REGISTRY_AUTH_FILE} ]; then \
+        echo "REGISTRY_AUTH_FILE=/${REGISTRY_AUTH_FILE}" >> /envfile; \
+    else \
+        echo "REGISTRY_AUTH_FILE=" >> /envfile; \
+    fi
+
 # [Re]create initrd
 RUN bash -c 'ls /lib/modules/*/vmlinu* | cut -d "/" -f 4 > /tmp/kernel_version' && \
     KVER=$(cat /tmp/kernel_version) && \
-    CA_CERTS=/${CA_CERTS_FILE} REG_AUTH=/${REGISTRY_AUTH_FILE} \
+    . /envfile && \
+    CA_CERTS=${CA_CERTS_FILE} REG_AUTH=${REGISTRY_AUTH_FILE} \
     CC_GUEST=1 IMAGE_TOPDIR=/usr/share/kata-containers \
     /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${KVER} 
 
