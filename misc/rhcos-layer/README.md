@@ -11,6 +11,12 @@ Build for tdx
 make TEE=tdx build
 ```
 
+To add the CA certs file (say ca-certs) and Registry auth file (say config.json) to the initrd,
+run the following.
+```sh
+sudo make TEE=tdx CA_CERTS=ca-certs REG_AUTH=config.json build
+```
+
 Build for snp
 
 ```sh

@@ -1,30 +1,49 @@
-# Use 4.16 as the base
-# 4.6.11 release image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:31feb7503f06db4023350e3d9bb3cfda661cc81ff21cef429770fb12ae878636
+# Use 4.18 as the base
+# 4.18.10 release image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:bdaa82a5a1df84ee304cbf842c80278e2286fede509664c5f0cf9c93c0992658
 
 ARG OCP_RELEASE_IMAGE
-
 FROM $OCP_RELEASE_IMAGE
 
+ARG CA_CERTS_FILE
+ARG REGISTRY_AUTH_FILE
+
+ENV CA_CERTS_FILE=${CA_CERTS_FILE}
+ENV REGISTRY_AUTH_FILE=${REGISTRY_AUTH_FILE}
+
+WORKDIR /
+
+# Install Kernel, Qemu and Kata-containers
 COPY tdx/centos-tdx.repo /etc/yum.repos.d
-COPY tdx/kata-containers-tdx.repo /etc/yum.repos.d
-COPY tdx/kata-containers-tdx-repo.tar.xz /tmp
+COPY tdx/rpms/ /
+RUN REPLACE_RPMS=$(cat /list_rpms_replace) && \
+    INSTALL_RPMS=$(cat /list_rpms_install) && \
+    rpm-ostree override replace ${REPLACE_RPMS} && \
+    rpm-ostree install ${INSTALL_RPMS}
 
-# Extract the kata-containers local RPM repo
-RUN mkdir -p /var/cache/kata-containers-tdx-repo && \
-    tar xvJpf /tmp/kata-containers-tdx-repo.tar.xz -C /var/cache/kata-containers-tdx-repo/
+# [Re]create initrd
+COPY ${CA_CERTS_FILE} /
+COPY ${REGISTRY_AUTH_FILE} /
+RUN if [ ${CA_CERTS_FILE} ]; then \
+    echo "CA_CERTS_FILE=/${CA_CERTS_FILE}" >> /envfile; \
+    else \
+    echo "CA_CERTS_FILE=" >> /envfile; \
+    fi && \
+    if [ ${REGISTRY_AUTH_FILE} ]; then \
+    echo "REGISTRY_AUTH_FILE=/${REGISTRY_AUTH_FILE}" >> /envfile; \
+    else \
+    echo "REGISTRY_AUTH_FILE=" >> /envfile; \
+    fi
 
-# Install latest qemu
-#RUN rpm-ostree install https://buildlogs.centos.org/centos/9-stream/virt/x86_64/tdx-devel/Packages/q/qemu-kvm-9.0.0-3.el9s.x86_64.rpm 
+RUN bash -c 'ls /lib/modules/*/vmlinu* | cut -d "/" -f 4 > /tmp/kernel_version' && \
+    KVER=$(cat /tmp/kernel_version) && \
+    . /envfile && \
+    CA_CERTS=${CA_CERTS_FILE} REG_AUTH=${REGISTRY_AUTH_FILE} \
+    CC_GUEST=1 IMAGE_TOPDIR=/usr/share/kata-containers \
+    /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${KVER}
 
-# Replace libibverbs for qemu-kvm-tdx. The RHCOS version is libibverbs-48 
-RUN rpm-ostree override replace https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/Packages/libibverbs-46.0-1.el9.x86_64.rpm
-RUN rpm-ostree install numactl-libs qemu-kvm-tdx
 
-#Install CentOS stream kernel
-RUN rpm-ostree override replace https://mirror.stream.centos.org/SIGs/9-stream/virt/x86_64/tdx-devel/Packages/k/kernel-{,core-,modules-,modules-core-,modules-extra-}5.14.0-480.el9s.x86_64.rpm
-     
-# Install Kata Containers
-RUN rpm-ostree install kata-containers
+# Selinux adjustments to provide access to sev
+RUN setsebool -P container_use_devices 1
 
 RUN rpm-ostree cleanup -m && \
     ostree container commit
