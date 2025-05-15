@@ -1,8 +1,6 @@
-# Use 4.18 as the base
-# 4.18.10 release image: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:bdaa82a5a1df84ee304cbf842c80278e2286fede509664c5f0cf9c93c0992658
-
-ARG OCP_RELEASE_IMAGE
-FROM $OCP_RELEASE_IMAGE
+# Use rhcos layerd image with kata-containers rpm for coco installed
+ARG RHCOS_COCO_IMAGE
+FROM $RHCOS_COCO_IMAGE
 
 ARG CA_CERTS_FILE
 ARG REGISTRY_AUTH_FILE
@@ -12,17 +10,9 @@ ENV REGISTRY_AUTH_FILE=${REGISTRY_AUTH_FILE}
 
 WORKDIR /
 
-# Install Kernel, Qemu and Kata-containers
-COPY snp/rpms/ /
-RUN  REPLACE_RPMS=$(cat /list_rpms_replace) && \
-     INSTALL_RPMS=$(cat /list_rpms_install) && \
-     rpm-ostree override replace ${REPLACE_RPMS} && \
-     rpm-ostree install ${INSTALL_RPMS}
- 
-
-# [Re]create initrd
 COPY ${CA_CERTS_FILE} /
 COPY ${REGISTRY_AUTH_FILE} /
+
 RUN if [ ${CA_CERTS_FILE} ]; then \
         echo "CA_CERTS_FILE=/${CA_CERTS_FILE}" >> /envfile; \
     else \
@@ -33,17 +23,14 @@ RUN if [ ${CA_CERTS_FILE} ]; then \
     else \
         echo "REGISTRY_AUTH_FILE=" >> /envfile; \
     fi
-     
+
+# [Re]create initrd
 RUN bash -c 'ls /lib/modules/*/vmlinu* | cut -d "/" -f 4 > /tmp/kernel_version' && \
     KVER=$(cat /tmp/kernel_version) && \
     . /envfile && \
     CA_CERTS=${CA_CERTS_FILE} REG_AUTH=${REGISTRY_AUTH_FILE} \
     CC_GUEST=1 IMAGE_TOPDIR=/usr/share/kata-containers \
-    /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${KVER}
-
-
-# Selinux adjustments to provide access to sev
-RUN setsebool -P container_use_devices 1
+    /usr/libexec/kata-containers/osbuilder/kata-osbuilder.sh -k ${KVER} 
 
 RUN rpm-ostree cleanup -m && \
     ostree container commit
