@@ -27,8 +27,8 @@ Following is the Containerfile:
 ```sh
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
-ADD tdx-rpms-0.2.0.tar.gz /tdx-rpms-0.2.0.tar.gz
-ADD snp-rpms-0.2.0.tar.gz /snp-rpms-0.2.0.tar.gz
+COPY tdx-rpms-0.2.0.tar.gz /tdx-rpms-0.2.0.tar.gz
+COPY snp-rpms-0.2.0.tar.gz /snp-rpms-0.2.0.tar.gz
 ```
 
 ```sh
